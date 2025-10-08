@@ -34,7 +34,7 @@ def main():
     else:
         # Local environment - use local file paths
         transcript_source = "./data/mol.csv"
-        sheet_source = "./public/Codebook.xlsx"
+        sheet_source = "1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc"
         save_dir = "./results"
         
         # Check if local files exist
@@ -72,7 +72,7 @@ def example_multiple_models():
         obs_list=["17"],
         feature="Mathcompetent",
         transcript_source="./data/mol.csv",
-        sheet_source="./public/Codebook.xlsx",
+        sheet_source="1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc",
         prompt_path="data/prompts/base.txt",
         system_prompt_path="data/prompts/system_prompt.txt",
         if_wait=True,
