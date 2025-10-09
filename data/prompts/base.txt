@@ -9,6 +9,8 @@ Be accurate and consistent:
 - If unsure, choose the label that most closely matches based on provided examples.
 - Minor grammatical mistakes or incomplete sentences should not change the intent.
 
+Please carefully review the context rows around the target row, if the context rows clearly indicate that the conversation relates to a certain feature but the specific row that you are labeling is ambigious, label that row with the feature from the rest of the conversation. Only label it with a different feature if it clearly belongs to a different feature. 
+
 </Task Overview>
 
 <Feature Definition>
