@@ -9,7 +9,7 @@ Be accurate and consistent:
 - If unsure, choose the label that most closely matches based on provided examples.
 - Minor grammatical mistakes or incomplete sentences should not change the intent.
 
-</Task Overview?
+</Task Overview>
 
 <Feature Definition>
 {feature}
