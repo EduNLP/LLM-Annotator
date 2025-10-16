@@ -72,9 +72,12 @@ def build_annotation_prompt(feature_dict: Dict,
 
 
 def replace_template_variables(template: str, definition: str, examples: str):
-    template = template.format(definition=definition)
-    template = template.format(examples=examples)
-    return template
+    return template.format(
+        definition=definition, 
+        examples=examples,
+        dialogue='{dialogue}', # Pass-through for later formatting
+        summary='{summary}'    # Pass-through for later formatting
+    )
 
 
 def extract_template_variables(template_text: str):
