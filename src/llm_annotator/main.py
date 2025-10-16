@@ -31,6 +31,7 @@ def annotate(
         if_wait=False,
         system_prompt_path: str = "data/prompts/system_prompt.txt",
         prompt_path: str = "",
+        annotation_prompt_path: str = "",
         if_test: bool = False,
         save_dir="",
         mode: str = ""
@@ -41,6 +42,7 @@ def annotate(
                            transcript_source=transcript_source,
                            system_prompt_path=system_prompt_path,
                            prompt_path=prompt_path,
+                           annotation_prompt_path=annotation_prompt_path,
                            sheet_source=sheet_source,
                            if_wait=if_wait,
                            if_test=if_test,
