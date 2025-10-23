@@ -2,7 +2,7 @@ import os.path
 
 import pandas as pd
 
-from typing import List
+from typing import List, Dict
 from datetime import datetime
 
 from llm_annotator.pipeline import Pipeline
@@ -21,6 +21,8 @@ def simple_llm_pipe(model_list: List[str],
                     if_test: bool,
                     save_dir: str,
                     n_uttr: int = 1,
+                    fwd_context_count: int = 0, 
+                    bwd_context_count: int = 0,
                     annotation_prompt_path: str = ""):
     dataloader = DataLoader(sheet_source=sheet_source,
                             transcript_source=transcript_source)
@@ -34,8 +36,12 @@ def simple_llm_pipe(model_list: List[str],
     pipe.add_pipe(name="pre-process", idx=3)
     pipe.add_pipe(name="build_examples", idx=4)
     pipe.add_pipe(name="build_system_prompt", idx=5)
-    pipe.add_pipe(name="build_user_prompt", idx=6)
-    pipe.add_pipe(name="process_observations", idx=7)
+    pipe.add_pipe(name="build_user_prompt", idx=6, 
+                  fwd_context_count=fwd_context_count, 
+                  bwd_context_count=bwd_context_count)
+    pipe.add_pipe(name="process_observations", idx=7, 
+                  fwd_context_count=fwd_context_count, 
+                  bwd_context_count=bwd_context_count)
     pipe.add_pipe(name="process_requests", idx=8)
     if if_wait:
         pipe.add_pipe(name="fetch_batch", idx=9)
