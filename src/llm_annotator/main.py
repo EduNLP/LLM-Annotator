@@ -37,7 +37,7 @@ def annotate(
         mode: str = "",
         fwd_context_count: int = 0, # Defaults to 0 (no forward context)
         bwd_context_count: int = 0  # Defaults to 0 (no backward context)
-)
+):
     pipe = simple_llm_pipe(model_list=model_list,
                            obs_list=obs_list,
                            feature=feature,
