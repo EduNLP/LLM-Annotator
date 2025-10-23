@@ -51,7 +51,7 @@ def annotate(
                            save_dir=save_dir,
                            n_uttr=n_uttr,
                            fwd_context_count=fwd_context_count, 
-                           bwd_context_count=bwd_context_count))
+                           bwd_context_count=bwd_context_count)
     pipe()
 
 
