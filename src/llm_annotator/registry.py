@@ -36,12 +36,8 @@ def simple_llm_pipe(model_list: List[str],
     pipe.add_pipe(name="pre-process", idx=3)
     pipe.add_pipe(name="build_examples", idx=4)
     pipe.add_pipe(name="build_system_prompt", idx=5)
-    pipe.add_pipe(name="build_user_prompt", idx=6, 
-                  fwd_context_count=fwd_context_count, 
-                  bwd_context_count=bwd_context_count)
-    pipe.add_pipe(name="process_observations", idx=7, 
-                  fwd_context_count=fwd_context_count, 
-                  bwd_context_count=bwd_context_count)
+    pipe.add_pipe(name="build_user_prompt", idx=6)
+    pipe.add_pipe(name="process_observations", idx=7)
     pipe.add_pipe(name="process_requests", idx=8)
     if if_wait:
         pipe.add_pipe(name="fetch_batch", idx=9)
