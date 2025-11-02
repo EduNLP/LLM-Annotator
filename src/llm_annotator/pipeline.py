@@ -24,7 +24,7 @@ class Pipeline:
             outputs[output_name] = output
 
         if len(outputs) == 1:
-            outputs = outputs[0]
+            outputs = list(outputs.values())[0]
         return outputs
 
     def add_pipe(self, name: str, idx: int):
