@@ -36,6 +36,33 @@ def generate_feature_def(feature_dict: Dict):
         )
     return template
 
+def escape_literal_braces(template: str) -> str:
+    """
+    Escapes all literal braces in the template text to avoid formatting errors,
+    while preserving the named placeholders needed for substitution.
+    """
+    # 1. Temporarily replace known, required placeholders with unique tags.
+    # This prevents the global escape from breaking our named placeholders.
+    template = template.replace('{definition}', '@@DEFINITION_TAG@@')
+    template = template.replace('{examples}', '@@EXAMPLES_TAG@@')
+    template = template.replace('{dialogue}', '@@DIALOGUE_TAG@@')
+    template = template.replace('{summary}', '@@SUMMARY_TAG@@')
+    template = template.replace('{bwd_context}', '@@BWD_CONTEXT_TAG@@') 
+    template = template.replace('{fwd_context}', '@@FWD_CONTEXT_TAG@@')
+    
+    # 2. Globally escape all remaining single braces (in the dictionary, etc.).
+    # This turns '{' into '{{' and '}' into '}}', making them literal text.
+    template = template.replace('{', '{{').replace('}', '}}')
+
+    # 3. Restore the known placeholders so they can be formatted later.
+    template = template.replace('@@DEFINITION_TAG@@', '{definition}')
+    template = template.replace('@@EXAMPLES_TAG@@', '{examples}')
+    template = template.replace('@@DIALOGUE_TAG@@', '{dialogue}')
+    template = template.replace('@@SUMMARY_TAG@@', '{summary}')
+    template = template.replace('@@BWD_CONTEXT_TAG@@', '{bwd_context}')
+    template = template.replace('@@FWD_CONTEXT_TAG@@', '{fwd_context}')
+
+    return template
 
 # TO-DO: Implement batching(built-in and batching-API)
 @utils.component("build_user_prompt")
@@ -67,14 +94,23 @@ def build_annotation_prompt(feature_dict: Dict,
         # TO-DO: Implement this read-in file
         with open(annotation_prompt_path, "r") as f:
             template = f.read()
+
+        # Sanitize the raw text before any formatting occurs
+        template = escape_literal_braces(template)
+        
         template = replace_template_variables(template=template, definition=definition, examples=examples)
         return "prompt_template", template
 
 
 def replace_template_variables(template: str, definition: str, examples: str):
-    template = template.format(definition=definition)
-    template = template.format(examples=examples)
-    return template
+    return template.format(
+        definition=definition, 
+        examples=examples,
+        dialogue='{dialogue}', # Pass-through for later formatting
+        summary='{summary}',    # Pass-through for later formatting
+        bwd_context='{bwd_context}', 
+        fwd_context='{fwd_context}'
+    )
 
 
 def extract_template_variables(template_text: str):

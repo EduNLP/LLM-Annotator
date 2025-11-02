@@ -101,7 +101,20 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
                     }
 
 
-@utils.component("process_observations")
+def format_dialogue_as_json(df: pd.DataFrame) -> str:
+    """
+    Formats a DataFrame of utterances into a JSON string (list of dictionaries).
+    """
+    if df.empty:
+        return "[]"
+    
+    data_list = df[['uttid', 'speaker', 'dialogue']].rename(
+        columns={'uttid': 'ID', 'speaker': 'Speaker', 'dialogue': 'Text'}
+    ).to_dict('records')
+    
+    return json.dumps(data_list, indent=None)
+
+@utils.component("process_observations") 
 def process_observations(transcript_df: pd.DataFrame,
                          model_list: List[str],
                          feature_dict: Dict,
@@ -110,58 +123,105 @@ def process_observations(transcript_df: pd.DataFrame,
                          n_uttr: int,
                          obs_list: List[str] = None,
                          if_context: bool = False,
-                         fwd_window: int = 0,
-                         bwd_window: int = 0,
+                         fwd_context_count: int = 0, 
+                         bwd_context_count: int = 0,
                          min_len: int = 6,
                          **kwargs) -> Dict[str, pd.DataFrame]:
 
-    # Create a dictionary to store results per feature
+    # Initial steps remain
     eligible_rows, atn_feature_dfs = mark_ineligible_rows(model_list=model_list,
-                                                          feature_dict=feature_dict,
-                                                          transcript_df=transcript_df,
-                                                          min_len=min_len)
+                                                         feature_dict=feature_dict,
+                                                         transcript_df=transcript_df,
+                                                         min_len=min_len)
 
-    # Group data by observation ID for faster context window construction
     obs_groups = group_obs(if_context=if_context, obs_list=obs_list, transcript_df=transcript_df)
 
-    # Process eligible rows
-    annotated_set = set()
-    model_reqs = {}
-    for model in model_list:
-        model_reqs[model] = []
+    model_reqs = {model: [] for model in model_list}
 
     i = 0
     while i < len(eligible_rows):
-        # Get current segment ID
-        current_segment_id = eligible_rows.iloc[i]['segment_id_1sd']
+        
+        # Initialize context variables for safe formatting
+        bwd_context = ""
+        fwd_context = ""
+        
+        # -----------------------------------------------------------
+        # CONTEXT WINDOW LOGIC (n_uttr=1)
+        # -----------------------------------------------------------
+        if n_uttr == 1 and (fwd_context_count > 0 or bwd_context_count > 0):
+            
+            # 1. Identify Target Utterance details
+            batch_uttr = eligible_rows.iloc[[i]]
+            current_segment_id = batch_uttr.iloc[0]['segment_id_1sd']
+            current_uttid = batch_uttr.iloc[0]['uttid']
+            
+            # 2. Extract the FULL sequential segment
+            full_segment = transcript_df[transcript_df['segment_id_1sd'] == current_segment_id].reset_index(drop=True)
+            
+            # 3. Find the starting index (position)
+            start_idx_in_segment = full_segment[full_segment['uttid'] == current_uttid].index[0]
+            
+            # 4. Extract Context Windows (bwd_context_count for BWD, fwd_context_count for FWD)
+            bwd_start = max(0, start_idx_in_segment - bwd_context_count) 
+            bwd_end = start_idx_in_segment
+            bwd_context_rows = full_segment.iloc[bwd_start:bwd_end]
+            
+            fwd_start = start_idx_in_segment + 1
+            fwd_end = min(len(full_segment), start_idx_in_segment + 1 + fwd_context_count)
+            fwd_context_rows = full_segment.iloc[fwd_start:fwd_end]
+            
+            # 5. Format Dialogue and Contexts as JSON
+            combined_dialogue = format_dialogue_as_json(batch_uttr)
+            bwd_context = format_dialogue_as_json(bwd_context_rows)
+            fwd_context = format_dialogue_as_json(fwd_context_rows)
+            
+            # Update index for next iteration
+            i += 1
+        
+        # -----------------------------------------------------------
+        # ORIGINAL BATCHING LOGIC (n_uttr > 1 or no context windows)
+        # -----------------------------------------------------------
+        else:
+            # Get current segment ID
+            current_segment_id = eligible_rows.iloc[i]['segment_id_1sd']
 
-        # Find the end index - either after n_uttr rows or when segment changes
-        max_idx = min(i + n_uttr, len(eligible_rows))
-        end_idx = i
+            # Find the end index - either after n_uttr rows or when segment changes
+            max_idx = min(i + n_uttr, len(eligible_rows))
+            end_idx = i
 
-        for j in range(i, max_idx):
-            if eligible_rows.iloc[j]['segment_id_1sd'] != current_segment_id:
-                break
-            end_idx = j + 1
+            for j in range(i, max_idx):
+                if eligible_rows.iloc[j]['segment_id_1sd'] != current_segment_id:
+                    break
+                end_idx = j + 1
 
-        # Extract the batch of utterances
-        batch_uttr = eligible_rows.iloc[i:end_idx]
+            # Extract the batch of utterances
+            batch_uttr = eligible_rows.iloc[i:end_idx]
 
-        # Create combined dialogue from batch
-        combined_dialogue = "\n".join(
-            f"{row['uttid']}: {row['dialogue']}"
-            for _, row in batch_uttr.iterrows()
-        )
+            # Create combined dialogue using the NEW JSON format
+            # NOTE: format_dialogue_with_speaker is replaced with format_dialogue_as_json
+            combined_dialogue = format_dialogue_as_json(batch_uttr)
+            
+            # Context variables remain empty strings ("")
+            bwd_context = ""
+            fwd_context = ""
 
-        # Create prompt and model requests
-        prompt = prompt_template.format(dialogue=combined_dialogue)
+            # Update index for next iteration
+            i = end_idx if end_idx > i else i + n_uttr
+        
+        # -----------------------------------------------------------
+        # COMMON STEP: CREATE PROMPT AND MODEL REQUESTS (RESTORED)
+        # -----------------------------------------------------------
+        
+        # Create prompt by passing all context variables (empty if not used)
+        prompt = prompt_template.format(dialogue=combined_dialogue,
+                                       bwd_context=bwd_context,
+                                       fwd_context=fwd_context)
+
+
 
         for model in model_list:
-            request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i)
-            model_reqs[model].append(request)
-
-        # Update index for next iteration
-        i = end_idx if end_idx > i else i + n_uttr
+           request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i)
+           model_reqs[model].append(request)
 
     return "model_requests", model_reqs
 

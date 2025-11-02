@@ -2,7 +2,7 @@ import os.path
 
 import pandas as pd
 
-from typing import List
+from typing import List, Dict
 from datetime import datetime
 
 from llm_annotator.pipeline import Pipeline
@@ -21,6 +21,8 @@ def simple_llm_pipe(model_list: List[str],
                     if_test: bool,
                     save_dir: str,
                     n_uttr: int = 1,
+                    fwd_context_count: int = 0, 
+                    bwd_context_count: int = 0,
                     annotation_prompt_path: str = ""):
     dataloader = DataLoader(sheet_source=sheet_source,
                             transcript_source=transcript_source)
