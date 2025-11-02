@@ -217,6 +217,15 @@ def process_observations(transcript_df: pd.DataFrame,
                                        bwd_context=bwd_context,
                                        fwd_context=fwd_context)
 
+        # 🌟 DEBUG STATEMENTS 🌟
+        print("-" * 50)
+        print(f"DEBUG: Final System Prompt:")
+        print(system_prompt)
+        print("-" * 50)
+        print(f"DEBUG: Final User Prompt for Utterance Index {i}:")
+        print(prompt)
+        print("-" * 50)
+
         for model in model_list:
            request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i)
            model_reqs[model].append(request)
