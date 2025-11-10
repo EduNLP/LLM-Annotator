@@ -337,7 +337,7 @@ def store_batch(batches: Dict,
         batch_filename = f"{model}.json"
         file_path = os.path.join(batch_dir, batch_filename)
 
-        if model == "gpt-4o":
+        if model in ["gpt-4o", "gpt-5-nano"]:
             batch_metadata = {
                 "id": batch_file.id,
                 "object": batch_file.object,
