@@ -71,18 +71,17 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
         case "gpt-4o" | "gpt-5-nano":
             return {"custom_id": f"request_{idx}",
                     "method": "POST",
-                    "url": "/v1/chat/completions",
+                    "url": "/v1/responses",
                     "body": {"model": model,
                              "messages": [{"role": "system",
                                            "content": system_prompt},
                                           {"role": "user",
                                            "content": prompt}],
-                             "max_tokens": 1000,
-                             "logprobs": True,
+                             "max_output_tokens": 150,
                              "temperature": 0,
-                             "response_format": {
-                                 "type": "json_object"
-                             }}
+                             "response_format": {"type": "json_object"}, 
+                             "reasoning": {"effort": "minimal"}
+                            }
                     }
         case "llama-7b-local" | "llama-13b-local":
             return {"custom_id": f"request_{idx}",
