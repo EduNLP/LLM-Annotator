@@ -294,16 +294,17 @@ def fetch_batch(save_dir: str,
                 status = response.status
 
                 # Retrieve completed results
-                if status == "completed" and not if_gpt_finished:
+                if status == "completed" and response.output_file_id and not if_gpt_finished:
                     result = client.files.content(response.output_file_id).read().decode("utf-8")
                     print(f"{model} has completed batching.")
                     results[model] = result
                     if_gpt_finished = True
-                elif status == "expired":
-                    print(f"{model}: Batch {batch_id} has expired.")
+                elif status == "completed" and not response.output_file_id and not if_gpt_finished:
+                    print(f"WARNING: {model} batch marked as completed, but no output file ID found. (Possible failure or empty results.)")
+                    # Treat as finished to break the loop for this model, but with a warning.
                     if_gpt_finished = True
-                elif status == "failed":
-                    print(f"{model}: Batch {batch_id} has failed.")
+                elif status == "failed" and not if_gpt_finished:
+                    print(f"ERROR: {model} batch failed. Reason: {response.errors}")
                     if_gpt_finished = True
                 elif status == "in_progress":
                     print(f"{model}: Batch {batch_id} is still in progress.")
