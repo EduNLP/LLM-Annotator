@@ -68,9 +68,26 @@ def batch_openai_annotate(requests: List[Dict]):
     os.makedirs("temp", exist_ok=True)  # Ensure the directory exists
     file_path = "temp/batch_input.jsonl"
 
-    with open(file_path, "w") as f:
-        for item in requests:
-            json.dump(item, f)  # Convert dict to JSON string
+    print(f"[DEBUG] Writing {len(requests)} requests to {file_path}")
+
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        for i, item in enumerate(requests):
+            if isinstance(item, dict) and item.get("method") and item.get("url") == "/v1/responses" and "body" in item:
+                body = item["body"]
+                simple_item = {
+                    "custom_id": item.get("custom_id", f"request_{i}"),
+                    "model": body.get("model"),
+                    "input": body.get("input"),
+                    "max_output_tokens": body.get("max_output_tokens", 150),
+                    "temperature": body.get("temperature", 0),
+                }
+                # Optional, only include reasoning if present
+                if "reasoning" in body:
+                    simple_item["reasoning"] = body["reasoning"]
+                json.dump(simple_item, f, ensure_ascii=False)
+            else:
+                json.dump(item, f, ensure_ascii=False)
             f.write("\n")
 
     client = OpenAI()
@@ -89,6 +106,9 @@ def batch_openai_annotate(requests: List[Dict]):
             "description": "Annotation job."
         }
     )
+
+    print(f"[DEBUG] Created batch job → id={batch_file.id}, status={batch_file.status}")
+
     return batch_file
 
 
