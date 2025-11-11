@@ -68,18 +68,26 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
                                }]
                 )
             )
-        case "gpt-4o" | "gpt-5-nano":
-            return {"custom_id": f"request_{idx}",
-                    "method": "POST",
-                    "url": "/v1/responses",
-                    "body": {"model": model,
-                             "input": f"System: {system_prompt}\n\nUser: {prompt}",
-                             "max_output_tokens": 150,
-                             "temperature": 0,
-                             "response_format": {"type": "json_object"}, 
-                             "reasoning": {"effort": "minimal"}
-                            }
-                    }
+
+        case "gpt-4o":
+          return {
+              "custom_id": f"request_{idx}",
+              "model": model,
+              "input": f"System: {system_prompt}\n\nUser: {prompt}",
+              "max_output_tokens": 150,
+              "temperature": 0.0
+          }
+
+        case "gpt-5-nano":
+          return {
+              "custom_id": f"request_{idx}",
+              "model": model,
+              "input": f"System: {system_prompt}\n\nUser: {prompt}",
+              "max_output_tokens": 150,
+              "temperature": 0.0,
+              "reasoning": {"effort": "minimal"}
+          }
+  
         case "llama-7b-local" | "llama-13b-local":
             return {"custom_id": f"request_{idx}",
                     "method": "POST",
