@@ -81,11 +81,9 @@ def batch_openai_annotate(requests: List[Dict]):
         purpose="batch"
     )
 
-    batch_input_file_id = batch_input_file.id
-
     batch_file = client.batches.create(
-        input_file_id=batch_input_file_id,
-        endpoint="/v1/chat/completions",
+        input_file_id=batch_input_file.id,  
+        endpoint="/v1/responses",
         completion_window="24h",
         metadata={
             "description": "Annotation job."
