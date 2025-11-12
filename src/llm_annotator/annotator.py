@@ -84,6 +84,24 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
                                  "type": "json_object"
                              }}
                     }
+
+        case "gpt-5-nano":
+            return {
+                "custom_id": f"request_{idx}",
+                "method": "POST",
+                "url": "/v1/chat/completions",
+                "body": {
+                    "model": "gpt-5-nano",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user",   "content": prompt}
+                    ]
+                }
+            }
+        
+        
+
+        
         case "llama-7b-local" | "llama-13b-local":
             return {"custom_id": f"request_{idx}",
                     "method": "POST",
@@ -246,7 +264,7 @@ def process_requests(model_requests: Dict,
     for model, req_list in model_requests.items():
         req_list = req_list[:100] if if_test else req_list
 
-        if model == "gpt-4o":
+        if model in ["gpt-4o", "gpt-5-nano"]:
             batch = batch_openai_annotate(requests=req_list)
 
         elif model == "claude-3-7":
@@ -279,7 +297,7 @@ def fetch_batch(save_dir: str,
     if not batches:
         batches = load_batch_files(timestamp=timestamp, feature=feature, save_dir=save_dir)
     
-    if_gpt_finished = False if "gpt-4o" in batches.keys() else True
+    if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano"]) else True
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
 
@@ -292,7 +310,7 @@ def fetch_batch(save_dir: str,
             else:
                 batch_id = batch.id
             
-            if model == "gpt-4o":
+            if model in ["gpt-4o", "gpt-5-nano"]:
                 client = openai.OpenAI()
                 response = client.batches.retrieve(batch_id)
                 status = response.status
