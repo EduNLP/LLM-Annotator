@@ -43,7 +43,7 @@ def save_results(batch_results: Dict, transcript_df: pd.DataFrame, feature: str,
     for model, batch_content in batch_results.items():
         print(f"Processing {model} results...")
         
-        if model == "gpt-4o":
+        if model in ("gpt-4o", "gpt-5-nano"):
             try:
                 # Ensure batch_content is a string and split into lines (each line is a JSON object)
                 batch_lines = batch_content.strip().split("\n")
