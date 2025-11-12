@@ -231,7 +231,7 @@ def load_batch_files(save_dir: str, timestamp: str = None, feature: str = "") ->
 
             # Read and parse the content from the file
             try:
-                if model == "gpt-4o":
+                if model in ("gpt-4o", "gpt-5-nano"):
                     with open(os.path.join(latest_dir, batch_file), 'r') as f:
                         data = json.load(f)
                         batches[model] = Batch.from_dict(data)
