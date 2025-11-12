@@ -9,6 +9,7 @@ from datetime import datetime
 
 import anthropic
 import openai
+
 from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
 from anthropic.types.messages.batch_create_params import Request
 
@@ -53,7 +54,15 @@ def group_obs(transcript_df: pd.DataFrame,
     return obs_groups
 
 
-def create_request(model: str, prompt: str, system_prompt: str, idx: int):
+def create_request(model: str, prompt: str, system_prompt: str, idx: int) -> Union[Dict, Request]:
+    """
+    Returns a request object in the canonical batch-API JSONL shape:
+    {"custom_id": "...", "method": "POST", "url": "/v1/responses", "body": {...}}
+    
+    This ensures all OpenAI requests contain the required 'method' and 'url' fields.
+    """
+    
+    # --- CLAUDE (Uses Anthropic's specific Request object) ---
     match model:
         case "claude-3-7":
             return Request(
@@ -69,25 +78,33 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
                 )
             )
 
-        case "gpt-4o":
-          return {
-              "custom_id": f"request_{idx}",
-              "model": model,
-              "input": f"System: {system_prompt}\n\nUser: {prompt}",
-              "max_output_tokens": 150,
-              "temperature": 0.0
-          }
+    # --- OPENAI Models (gpt-4o, gpt-5-nano) ---
+    # These must be wrapped in the Batch API request structure for the /v1/responses endpoint.
+    if model in {"gpt-4o", "gpt-5-nano"}:
+        body = {
+            # Use the Responses API fields: model + input (string)
+            "model": model,
+            # We use a single-string `input` containing explicit system+user text
+            "input": f"System: {system_prompt}\n\nUser: {prompt}",
+            # sensible defaults
+            "max_output_tokens": 150,
+            "temperature": 0.0,
+        }
 
-        case "gpt-5-nano":
-          return {
-              "custom_id": f"request_{idx}",
-              "model": model,
-              "input": f"System: {system_prompt}\n\nUser: {prompt}",
-              "max_output_tokens": 150,
-              "temperature": 0.0,
-              "reasoning": {"effort": "minimal"}
-          }
-  
+        # If gpt-5-nano needs minimal reasoning metadata, include it
+        if model == "gpt-5-nano":
+            body["reasoning"] = {"effort": "minimal"}
+
+        return {
+            "custom_id": f"request_{idx}",
+            "method": "POST",
+            "url": "/v1/responses",  # MUST MATCH BATCH CREATION ENDPOINT
+            "body": body
+        }
+
+    # --- Local Llama-style models ---
+    # Keep the previous shape used for local batching (which was already correct)
+    match model:
         case "llama-7b-local" | "llama-13b-local":
             return {"custom_id": f"request_{idx}",
                     "method": "POST",
@@ -103,7 +120,17 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int):
                                  "type": "json_object"
                              }}
                     }
-
+    
+    # Fallback for unknown models
+    return {
+        "custom_id": f"request_{idx}",
+        "method": "POST",
+        "url": "/v1/responses",
+        "body": {
+            "model": model,
+            "input": f"System: {system_prompt}\n\nUser: {prompt}"
+        }
+    }
 
 def format_dialogue_as_json(df: pd.DataFrame) -> str:
     """
