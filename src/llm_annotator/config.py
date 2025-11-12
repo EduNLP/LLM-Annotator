@@ -1,4 +1,4 @@
-from llm_annotator.llm import batch_anthropic_annotate, batch_local_llm_annotate
+from llm_annotator.llm import batch_anthropic_annotate, batch_local_llm_annotate, batch_openai_annotate
 
 from enum import Enum
 from typing import Optional
@@ -8,6 +8,7 @@ class ModelType(Enum):
     GPT4O = "gpt-4o"
     O1 = "o1-preview"
     GPT4_TURBO = "gpt-4-turbo"
+    GPT5_NANO = "gpt-5-nano"
     CLAUDE = "claude-3-5-sonnet-20241022"
     GEMINI = "gemini-1.5-pro"
     MISTRAL = "mistral--large-latest"
@@ -28,6 +29,7 @@ class ModelConfig:
 model_configs = {
         "gpt-4o": ModelConfig(ModelType.GPT4O),
         "gpt-o1": ModelConfig(ModelType.O1),
+        "gpt-5-nano": ModelConfig(ModelType.GPT5_NANO),
         "claude-3-5": ModelConfig(ModelType.CLAUDE),
         "gemini-1.5-pro": ModelConfig(ModelType.GEMINI),
         "mistral": ModelConfig(ModelType.MISTRAL),
@@ -40,6 +42,7 @@ model_configs = {
 
 annotation_configs = {
     "claude-3-5": batch_anthropic_annotate,
+    "gpt-5-nano": batch_openai_annotate, 
     "llama-3b-local": lambda requests: batch_local_llm_annotate(requests, "meta-llama/Llama-3.2-3B-Instruct"),
     "llama-70b-local": lambda requests: batch_local_llm_annotate(requests, "meta-llama/Llama-3.3-70B-Instruct")
 }
