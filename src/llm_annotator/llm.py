@@ -8,11 +8,13 @@ import anthropic
 from datetime import datetime
 from dotenv import load_dotenv, find_dotenv
 from typing import List, Dict, Optional
-
+import uuid # Add this to top of llm.py
 from pydantic import BaseModel
 from openai import OpenAI
 from anthropic import Anthropic
 from anthropic.types.messages.batch_create_params import Request
+from datetime import datetime, timezone
+
 
 from llm_annotator.utils import create_batch_dir
 
@@ -31,21 +33,56 @@ class Annotation(BaseModel):
     feature_name: str
     annotation: int
 
-
-def openai_annotate(prompt: str):
+def openai_annotate(prompt: str, system_prompt: str = None):
+    """
+    Single-request call using Responses API (flattened text input).
+    Uses Pydantic Annotation.model_json_schema() as response_format (keeps structured parsing).
+    Returns the parsed structured output (dict) when present, otherwise None.
+    """
     client = OpenAI()
-    completion = client.beta.chat.completions.parse(
-        model="gpt-4o-2024-08-06",
-        messages=[
-            {"role": "system",
-             "content": "You are an expert at structured data annotation. You will be given unstructured student dialogue from math class discussions and should annotate the utternace with appropriate values. Return the output in JSON format."},
-            {"role": "user", "content": f"{prompt}"}
-        ],
+
+    # Flattened input: system prompt then user prompt, separated by double newline
+    flattened_input = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+
+
+    #Debug
+
+    # Use responses.create for Responses API
+    completion = client.responses.create(
+        model="gpt-5-nano",
+        input=flattened_input,
         response_format=Annotation.model_json_schema(),
+        max_output_tokens=1000
     )
 
-    annotations = completion.choices[0].message.parsed
-    return annotations
+    # Extract structured parsed output, handling multiple SDK shapes:
+    parsed = None
+    try:
+        # Some SDKs expose a top-level 'output_parsed' or similar attribute
+        if hasattr(completion, "output_parsed") and completion.output_parsed:
+            parsed = completion.output_parsed
+            return parsed
+
+        outputs = getattr(completion, "output", None) or (completion.get("output") if isinstance(completion, dict) else None)
+        if outputs and len(outputs) > 0:
+            first = outputs[0]
+            # If the first output item is a dict, try dict lookup
+            if isinstance(first, dict):
+                parsed = first.get("parsed")
+                # Some SDKs nest parsed deeper (e.g., first.get('content', [{}])[0].get('parsed'))
+                if parsed is None:
+                    # Common fallback structure: {'content': [{'type': 'output_text', 'text': '...'}], 'parsed': {...}}
+                    # Try nested possibilities conservatively
+                    content = first.get("content") or first.get("outputs") or first.get("data")
+                    if isinstance(content, list) and len(content) > 0 and isinstance(content[0], dict):
+                        parsed = content[0].get("parsed") or content[0].get("data", {}).get("parsed")
+            else:
+                # object-like SDK item; prefer attribute access
+                parsed = getattr(first, "parsed", None)
+    except Exception:
+        parsed = None
+
+    return parsed
 
 
 def anthropic_annotate(prompt: str, system_prompt: str):
@@ -65,32 +102,97 @@ def anthropic_annotate(prompt: str, system_prompt: str):
 
 
 def batch_openai_annotate(requests: List[Dict]):
-    os.makedirs("temp", exist_ok=True)  # Ensure the directory exists
-    file_path = "temp/batch_input.jsonl"
+    """
+    Writes a JSONL file for batch processing using the Responses API, then creates a batch.
+    Each line is of the form:
+      {"custom_id":..., "body": {"model": "...", "input": "...", "response_format": <schema>, ...}}
+    and the batch is created with endpoint "/v1/responses".
+    """
+    os.makedirs("temp", exist_ok=True)
 
-    with open(file_path, "w") as f:
+    ts = datetime.now().astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+
+    random_id = uuid.uuid4().hex
+    file_path = os.path.join("temp", f"batch_input_{ts}_{random_id}.jsonl")
+
+
+    # Build JSONL with Responses API body structure
+    with open(file_path, "w", encoding="utf-8") as f:
         for item in requests:
-            json.dump(item, f)  # Convert dict to JSON string
+            # item is expected to be what create_request() returned.
+            # Ensure `body` contains flattened 'input' field instead of 'messages'
+            body = item.get("body", {})
+            # If the request still contains `messages`, flatten them into a single text field:
+            if "messages" in body and not "input" in body:
+                parts = []
+                for m in body.get("messages", []):
+                    role = m.get("role", "user")
+                    content = m.get("content", "")
+                    # include role label as markup to preserve role if desired
+                    parts.append(f"{role.upper()}: {content}")
+                body["input"] = "\n\n".join(parts)
+                body.pop("messages", None)
+
+            # Ensure response_format is present; prefer schema from Annotation
+           # RQ if "response_format" not in body:
+                # Keep using model_json_schema as-is (SDK should accept it)
+           #     body["response_format"] = Annotation.model_json_schema()
+
+            line = {"custom_id": item.get("custom_id"), "body": body, "method": "POST", "url": '/v1/responses'} # Method
+
+
+                    # --- DEBUG START: CHECK FINAL LINE STRUCTURE ---
+            # Print the custom ID to see which request is being processed
+            print(f"\n[DEBUG] Processing Custom ID: {item.get('custom_id')}")
+            
+            # Check the final 'input' field length and boundary
+            input_content = body.get("input", "")
+            print(f"[DEBUG] Input Content Length: {len(input_content)}")
+            # Print the start and end of the prompt to catch early/late errors
+            print(f"[DEBUG] Input Content Start: {input_content[:150].replace('\n', ' ')}...")
+            print(f"[DEBUG] Input Content End: ...{input_content[-150:].replace('\n', ' ')}")
+            
+            # Print the entire JSON line, but ONLY the first 300 characters
+            # The output of json.dumps(line) should be valid JSON.
+            try:
+                full_json_line = json.dumps(line, ensure_ascii=False)
+                print(f"[DEBUG] Final JSON Line Sample: {full_json_line[:300]}...")
+
+
+            except Exception as e:
+                print(f"[CRITICAL DEBUG] Failed to serialize final JSON line: {e}")
+            #Debug end
+
+
+            json.dump(line, f, ensure_ascii=False)
+
+
+            # line_dictionary_file = json.loads(line)
+            # print(f"[DEBUG] Final JSON Line Sample: {line_dictionary_file.keys()}")
+
             f.write("\n")
 
     client = OpenAI()
 
     # Upload the batch file
-    batch_input_file = client.files.create(
-        file=open(file_path, "rb"),
-        purpose="batch"
-    )
+    with open(file_path, "rb") as fp:
+        batch_input_file = client.files.create(file=fp, purpose="batch")
+
 
     batch_input_file_id = batch_input_file.id
 
+    print("BATCH INPUT DATA")
+    print(batch_input_file_id)
+    print(batch_input_file)
+
+    # Create a batch that targets the Responses endpoint
     batch_file = client.batches.create(
         input_file_id=batch_input_file_id,
-        endpoint="/v1/chat/completions",
+        endpoint="/v1/responses",
         completion_window="24h",
-        metadata={
-            "description": "Annotation job."
-        }
+        metadata={"description": "Annotation job (responses API)."}
     )
+
     return batch_file
 
 
