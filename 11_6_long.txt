@@ -1,0 +1,51 @@
+﻿<Task Overview> 
+In this comprehensive annotation task, you are an essential contributor to the analysis of educational discourse, specifically within the domain of **mathematics classroom transcripts**. The ultimate objective is to precisely **classify student and teacher utterances** to gain robust insights into pedagogical patterns, levels of mathematical reasoning, and interaction dynamics among participants. This effort requires careful attention to detail and unwavering adherence to the provided classification system. 
+
+
+You will be presented with a critical **block of dialogue** for classification. This block is meticulously structured to ensure you have complete conversational context, consisting of three indispensable segments: the **Backward Context**, the **Target Utterance**, and the **Forward Context**. Understanding the temporal and thematic relationship between these segments is crucial for accurate labeling. The **context utterances** (contained within the Backward and Forward Context sections) are provided in a standard **JSON format** as a list of dictionaries. Each dictionary entry is designed for full traceability and clarity, containing the required keys: **ID (`uttid`)**, **Speaker**, and the complete **Text** of the utterance. This contextual information is vital for understanding the flow and thematic focus of the conversation leading up to and following the utterance under scrutiny. The **utterance to be classified** is the singular **Target Utterance**, which is clearly delimited within the `<Target Utterance>` section. This target utterance is also supplied in a standardized JSON format, and it is **mandatory** that you utilize its unique **ID key (`uttid`)** as the key for your final JSON output. This strict requirement ensures a precise, one-to-one, and machine-readable result for automated processing. Your primary goal is to **categorize each Target Utterance** by selecting the single, most appropriate label from the defined taxonomy, based strictly on the label definitions and examples provided separately. The selection process must prioritize identifying the core **content and intent** of the utterance. This core principle must hold true **even if the surface realization of the utterance is imperfect**, meaning the utterance may be partial, syntactically unclear, or contain grammatical or conceptual errors. **The underlying communicative purpose is paramount** over linguistic surface form. The final deliverable for each task must be rendered in **strict JSON format**. This output must contain the annotations for the single unique ID key (`uttid`) presented in the Target Utterance section, mapping the ID directly to the chosen categorical label. **You must output in strict JSON format the annotations for all <uttid>** as specified in the Target Utterance. Adherence to this output format is non-negotiable for system processing and verification. 
+
+
+To ensure the high-quality and reliable dataset required for linguistic analysis, you must adhere to the following stringent annotation guidelines for **accuracy and consistency**: 1. **Exclusive Label Usage:** You are strictly mandated to **only use labels from the provided list** of valid categories. Do not introduce any external or invented labels, synonyms, or variations. 2. **Taxonomy Adherence:** Under no circumstances should you **invent new labels** or modify the provided taxonomy. 3. **Handling Uncertainty:** If the ideal label is not immediately clear, or if you feel genuinely **unsure** which category is the best fit, you must exercise professional judgment and **choose the label that most closely matches** the primary intent based on the comprehensive definitions and the provided examples. Avoid defaulting to generic labels; strive for the most specific match possible. 4. **Tolerance for Imperfection:** Annotation should focus on semantic and pragmatic intent. **Minor grammatical mistakes, misspoken words, or incomplete sentences** (e.g., sentence fragments or false starts) **should not change the intended label**. Only a complete, explicit shift in topic or intent warrants a different classification. 
+
+### The Principle of Contextual Grounding and Conversational Flow A critical instruction for maintaining conversational coherence is the use of the surrounding context: **Please carefully review the context rows**—both those preceding (Backward Context) and following (Forward Context)—**around the target row**. If the context rows clearly indicate that the ongoing conversation relates to a certain label or a specific mathematical topic (e.g., all preceding turns discuss "Problem Solving Strategy"), but the specific row that you are labeling is functionally **ambiguous** or vague (e.g., the student only says "Okay, yeah" or "What about that one?"), you **must assign that ambiguous target row the label from the rest of the established conversation**. This ensures that short, non-specific responses are correctly linked to the active discourse topic, preserving the flow. **Only assign it a different label if it clearly belongs to a different feature** (e.g., if the flow is about "Mathematical Proof" but the target utterance explicitly shifts to "Asking a Clarification Question"). This adherence to conversational flow is paramount for accurate topic segmentation.
+
+### CRITICAL OUTPUT MANDATE: NUMERICAL BINARY CLASSIFICATION
+
+**The classification task is strictly binary for automated processing.** You must determine if the Target Utterance belongs to the specific binary feature (e.g., "Offtask").
+
+1.  **Output Value Constraint:** The value associated with the `uttid` key in your final JSON output **MUST** be a single integer: **1** or **0**.
+2.  **Mapping Definition:**
+    * If the Target Utterance belongs to the defined binary feature, the output value **MUST be 1**.
+    * If the Target Utterance does NOT belong to the defined binary feature, the output value **MUST be 0**.
+3.  **Forbidden Output:** You are strictly forbidden from outputting the string name of the feature (e.g., "Offtask", "0", "1") as the value. The value must be the raw integer **1** or **0**.
+
+
+Please try your absolute best to carefully classify the utterance based on the definitions and the context rows. Accuracy is key in this task, so read carefully. Remember your role and the directions of the task, as these are key pieces of context to consider as you perform the task. The results of this task will be used for an academic paper, so maximum performance is extremely, critically important and you are responsible for delivering that performance. 
+
+
+
+
+<Feature Definition>
+{definition}
+</Feature Definition>
+
+
+<Example Annotations>
+Here are labeled examples to guide your classification decisions:
+{examples}
+</Example Annotations>
+
+
+### Backward Context (Utterances Immediately Preceding Target) ###
+{bwd_context}
+
+
+<Target Utterance>
+Format the output as JSON with the <uttid> as keys.
+Utterances:
+{dialogue}
+</Target Utterance>
+
+
+### Forward Context (Utterances Immediately Following Target) ###
+{fwd_context}

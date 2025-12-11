@@ -54,83 +54,131 @@ def group_obs(transcript_df: pd.DataFrame,
     return obs_groups
 
 
-def create_request(model: str, prompt: str, system_prompt: str, idx: int) -> Union[Dict, Request]:
+import re
+from typing import Dict, List
+import json
+from typing import Dict, Any
+import uuid
+from typing import Optional
+
+
+# Note: Assuming 'Request' and 'MessageCreateParamsNonStreaming' are defined/imported
+# in the global scope of annotator.py, as they are used by this function.
+
+def create_request(model: str, prompt: str, system_prompt: str, idx: int, feature: Optional[str] = None) -> Dict[str, Any]:
     """
-    Returns a request object in the canonical batch-API JSONL shape:
-    {"custom_id": "...", "method": "POST", "url": "/v1/responses", "body": {...}}
-    
-    This ensures all OpenAI requests contain the required 'method' and 'url' fields.
+    Creates a request descriptor for batching using the old, faulty structure
+    for OpenAI models.
     """
     
-    # --- CLAUDE (Uses Anthropic's specific Request object) ---
-    match model:
-        case "claude-3-7":
-            return Request(
-                custom_id=f"request_{idx}",
-                params=MessageCreateParamsNonStreaming(
-                    model="claude-3-7-sonnet-20250219",
-                    max_tokens=1000,
-                    system=[{"type": "text",
-                             "text": system_prompt}],
-                    messages=[{"role": "user",
-                               "content": prompt,
-                               }]
-                )
+    def clean_text(text: str) -> str:
+        """Removes problematic invisible characters without stripping intentional whitespace."""
+        text = text.lstrip('\ufeff')
+        text = text.replace('\xa0', ' ')
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        return text
+
+    # Apply cleaning to both prompts
+    prompt = clean_text(prompt)
+    system_prompt = clean_text(system_prompt)
+    
+    # Standard batch metadata required for all external API calls
+    feature_tag = f"{feature}_" if feature else ""
+    unique_suffix = uuid.uuid4().hex[:8]
+    batch_metadata: Dict[str, Any] = {
+        "custom_id": f"{feature_tag}request_{idx}_{unique_suffix}",
+        "method": "POST",
+    }
+    # --------------------------------------------------------------------------
+
+    # 1) Anthropic (Claude) - (Untouched, uses custom object)
+    if model == "claude-3-7":
+        # Assuming Request and MessageCreateParamsNonStreaming are available in global scope
+        return Request(
+            custom_id=f"request_{idx}",
+            params=MessageCreateParamsNonStreaming(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=1000,
+                system=[{"type": "text", "text": system_prompt}],
+                messages=[{"role": "user", "content": prompt}],
             )
-
-    # --- OPENAI Models (gpt-4o, gpt-5-nano) ---
-    # These must be wrapped in the Batch API request structure for the /v1/responses endpoint.
-    if model in {"gpt-4o", "gpt-5-nano"}:
-        body = {
-            # Use the Responses API fields: model + input (string)
-            "model": model,
-            # We use a single-string `input` containing explicit system+user text
-            "input": f"System: {system_prompt}\n\nUser: {prompt}",
-            # sensible defaults
-            "max_output_tokens": 150,
-            "temperature": 0.0,
+        )
+    
+    # 2) GPT-4o
+    if model == "gpt-4o":
+        # The Responses API requires flattened input, but this older logic 
+        # still incorrectly uses the chat/completions 'body' structure.
+        
+        # We need the Annotation class for the response_format key
+        AnnotationCls = globals().get("Annotation")
+        response_format = AnnotationCls.model_json_schema() if AnnotationCls and hasattr(AnnotationCls, "model_json_schema") else None
+        
+        body_data = {
+            "model": "gpt-4o",
+            # NOTE: This uses the flattened input, but puts it inside a 'body'
+            # which is incorrect for the Batch API.
+            "input": "\n\n".join([p for p in [system_prompt, prompt] if p]),
+            "max_output_tokens": 1000,
+         #   "temperature": 0.0,
         }
+        
 
-        # If gpt-5-nano needs minimal reasoning metadata, include it
-        if model == "gpt-5-nano":
-            body["reasoning"] = {"effort": "minimal"}
 
         return {
-            "custom_id": f"request_{idx}",
-            "method": "POST",
-            "url": "/v1/responses",  # MUST MATCH BATCH CREATION ENDPOINT
-            "body": body
+            **batch_metadata, 
+            "method":"POST",
+            "url": "/v1/responses",
+            "body": body_data
+        }
+        
+    # 3) GPT-5-nano and GPT-5-mini and gpt-5.1
+    if model in ["gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
+        # We need the Annotation class for the response_format key
+        AnnotationCls = globals().get("Annotation")
+        response_format = AnnotationCls.model_json_schema() if AnnotationCls and hasattr(AnnotationCls, "model_json_schema") else None
+        
+        if model == "gpt-5.1":
+            reasoning_setting = {"effort": "none"}
+        else:
+            reasoning_setting = {"effort": "minimal"}
+
+        body_data = {
+            "model": model,
+            "input": "\n\n".join([p for p in [system_prompt, prompt] if p]),
+            "max_output_tokens": 1000,
+            "reasoning": reasoning_setting,
+           # RQ "temperature": 0.0,
+        }
+        
+
+        return {
+            **batch_metadata,
+            "method":"POST",
+            "url": "/v1/responses",
+            "body": body_data,
         }
 
-    # --- Local Llama-style models ---
-    # Keep the previous shape used for local batching (which was already correct)
-    match model:
-        case "llama-7b-local" | "llama-13b-local":
-            return {"custom_id": f"request_{idx}",
-                    "method": "POST",
-                    "url": "/v1/chat/completions",
-                    "body": {"model": model,
-                             "messages": [{"role": "system",
-                                           "content": system_prompt},
-                                          {"role": "user",
-                                           "content": prompt}],
-                             "max_tokens": 512,
-                             "temperature": 0.1,
-                             "response_format": {
-                                 "type": "json_object"
-                             }}
-                    }
-    
-    # Fallback for unknown models
-    return {
-        "custom_id": f"request_{idx}",
-        "method": "POST",
-        "url": "/v1/responses",
-        "body": {
-            "model": model,
-            "input": f"System: {system_prompt}\n\nUser: {prompt}"
+    # 4) Local Llama models - (Untouched: uses chat/completions body structure)
+    if model in ["llama-7b-local", "llama-13b-local"]:
+        # This structure is correct for the local models.
+        return {
+            **batch_metadata,
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 512,
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            },
         }
-    }
+        
+    # Fallback for unsupported models
+    raise ValueError(f"Unsupported model: {model}")
+
 
 def format_dialogue_as_json(df: pd.DataFrame) -> str:
     """
@@ -277,7 +325,7 @@ def process_requests(model_requests: Dict,
     for model, req_list in model_requests.items():
         req_list = req_list[:100] if if_test else req_list
 
-        if model in ["gpt-4o", "gpt-5-nano"]:
+        if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
             batch = batch_openai_annotate(requests=req_list)
 
         elif model == "claude-3-7":
@@ -310,7 +358,8 @@ def fetch_batch(save_dir: str,
     if not batches:
         batches = load_batch_files(timestamp=timestamp, feature=feature, save_dir=save_dir)
     
-    if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano"]) else True
+    if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano","gpt-5-mini", "gpt-5.1"]) else True
+
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
 
@@ -323,9 +372,17 @@ def fetch_batch(save_dir: str,
             else:
                 batch_id = batch.id
             
-            if model in ["gpt-4o", "gpt-5-nano"]:
-                client = openai.OpenAI()
+
+            if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
+                client = openai.OpenAI(timeout=180.0)
+
+
                 response = client.batches.retrieve(batch_id)
+
+                print("OpenAI Response")
+                print(response)
+
+
                 status = response.status
 
                 # Retrieve completed results
@@ -410,8 +467,9 @@ def fetch_batch(save_dir: str,
             if if_gpt_finished and if_claude_finished and if_local_finished:
                 print("All annotation tasks are finished.")
                 break  # Exit loop if all batches are done
-
-            time.sleep(10)
+            
+            print("Waiting 60s for batch completion...")
+            time.sleep(60)
     else:
         # Execute the batch processing just once without waiting
         process_batches(if_gpt_finished, if_claude_finished, if_local_finished)
