@@ -4,11 +4,12 @@ import os
 import json
 
 
-from typing import Dict, List
+from typing import Dict, List, Union
 from datetime import datetime
 
 import anthropic
 import openai
+
 from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
 from anthropic.types.messages.batch_create_params import Request
 
@@ -56,18 +57,6 @@ def group_obs(transcript_df: pd.DataFrame,
 import re
 from typing import Dict, List
 import json
-# Import necessary Anthropic/OpenAI types if they are used by the function signature
-# Note: Assuming 'Request' and 'MessageCreateParamsNonStreaming' are imported globally in annotator.py
-
-import re
-# Note: Assuming 'Request' and 'MessageCreateParamsNonStreaming' are defined/imported
-# in the global scope of annotator.py, as they are used by this function.
-
-import re
-# Note: Assuming 'Request' and 'MessageCreateParamsNonStreaming' are defined/imported
-# in the global scope of annotator.py, as they are used by this function.
-
-import re
 from typing import Dict, Any
 import uuid
 from typing import Optional
@@ -189,6 +178,7 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int, featur
         
     # Fallback for unsupported models
     raise ValueError(f"Unsupported model: {model}")
+
 
 def format_dialogue_as_json(df: pd.DataFrame) -> str:
     """
@@ -369,6 +359,7 @@ def fetch_batch(save_dir: str,
         batches = load_batch_files(timestamp=timestamp, feature=feature, save_dir=save_dir)
     
     if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano","gpt-5-mini", "gpt-5.1"]) else True
+
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
 
@@ -381,8 +372,11 @@ def fetch_batch(save_dir: str,
             else:
                 batch_id = batch.id
             
+
             if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
                 client = openai.OpenAI(timeout=180.0)
+
+
                 response = client.batches.retrieve(batch_id)
 
                 print("OpenAI Response")
@@ -392,16 +386,17 @@ def fetch_batch(save_dir: str,
                 status = response.status
 
                 # Retrieve completed results
-                if status == "completed" and not if_gpt_finished:
+                if status == "completed" and response.output_file_id and not if_gpt_finished:
                     result = client.files.content(response.output_file_id).read().decode("utf-8")
                     print(f"{model} has completed batching.")
                     results[model] = result
                     if_gpt_finished = True
-                elif status == "expired":
-                    print(f"{model}: Batch {batch_id} has expired.")
+                elif status == "completed" and not response.output_file_id and not if_gpt_finished:
+                    print(f"WARNING: {model} batch marked as completed, but no output file ID found. (Possible failure or empty results.)")
+                    # Treat as finished to break the loop for this model, but with a warning.
                     if_gpt_finished = True
-                elif status == "failed":
-                    print(f"{model}: Batch {batch_id} has failed.")
+                elif status == "failed" and not if_gpt_finished:
+                    print(f"ERROR: {model} batch failed. Reason: {response.errors}")
                     if_gpt_finished = True
                 elif status == "in_progress":
                     print(f"{model}: Batch {batch_id} is still in progress.")

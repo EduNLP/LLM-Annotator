@@ -170,13 +170,16 @@ def batch_openai_annotate(requests: List[Dict]):
             # line_dictionary_file = json.loads(line)
             # print(f"[DEBUG] Final JSON Line Sample: {line_dictionary_file.keys()}")
 
+
             f.write("\n")
+    # --- END OF CORRECTION ---
 
     client = OpenAI()
 
     # Upload the batch file
     with open(file_path, "rb") as fp:
         batch_input_file = client.files.create(file=fp, purpose="batch")
+
 
 
     batch_input_file_id = batch_input_file.id
@@ -188,6 +191,7 @@ def batch_openai_annotate(requests: List[Dict]):
     # Create a batch that targets the Responses endpoint
     batch_file = client.batches.create(
         input_file_id=batch_input_file_id,
+
         endpoint="/v1/responses",
         completion_window="24h",
         metadata={"description": "Annotation job (responses API)."}
@@ -440,6 +444,7 @@ def store_batch(batches: Dict,
         file_path = os.path.join(batch_dir, batch_filename)
 
         if model in ("gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"):
+
             batch_metadata = {
                 "id": batch_file.id,
                 "object": batch_file.object,
