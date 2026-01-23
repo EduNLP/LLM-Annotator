@@ -36,12 +36,6 @@ Here are labeled examples to guide your classification decisions:
 <Target Utterance>
 Format the output as JSON with the <uttid> as keys. Each <uttid> should map to an object with "annotation" (0 or 1) and "confidence" (float between 0.0 and 1.0).
 
-Example output format:
-{
-  "001_496": {"annotation": 1, "confidence": 0.95},
-  "001_497": {"annotation": 0, "confidence": 0.87}
-}
-
 Utterances:
 {dialogue}
 </Target Utterance>
