@@ -1,0 +1,45 @@
+<Task Overview>
+In this task, you will classify student utterances from a mathematics classroom transcript. You will be given a list of dialogue utterances. Each utterance is formatted as <uttid>:<utterance text>. Your goal is to categorize each target utterance (<Target Utterance>) based on the following label according to the label definitions provided below. Choose the label that best matches the **content and intent** of the utterance, even if the utterance is partial, unclear, or contains errors. For each utterance, also provide a decimal score representing your confidence in its annotation.
+
+
+You must output in strict **JSON format** the annotations and confidence scores for all <uttid>.
+
+
+Be accurate and consistent:
+- Only use labels from the provided list.
+- Do not invent new labels.
+- If unsure, choose the label that most closely matches based on provided examples.
+- Minor grammatical mistakes or incomplete sentences should not change the intent.
+
+
+Please carefully review the context rows (Backward Context and Forward Context)  around the target row (<Target Utterance>), if the context rows clearly indicate that the conversation relates to a certain label but the <Target Utterance> is ambiguous, assign that row the label from the rest of the conversation. Only assign it a different label if it clearly belongs to a different feature. 
+
+
+Previous LLMs doing this prompt had very high recall but very low precision. Please keep this very much in mind when you make your predictions and be *very* careful not to over-predict the number of class=1 values. 
+
+
+<Feature Definition>
+{definition}
+</Feature Definition>
+
+
+<Example Annotations>
+Here are labeled examples to guide your classification decisions:
+{examples}
+</Example Annotations>
+
+
+### Backward Context (Utterances Immediately Preceding Target) ###
+{bwd_context}
+
+
+<Target Utterance>
+Format the output as JSON with the <uttid> as keys. Each <uttid> should map to an object with "annotation" (0 or 1) and "confidence" (float between 0.0 and 1.0).
+
+Utterances:
+{dialogue}
+</Target Utterance>
+
+
+### Forward Context (Utterances Immediately Following Target) ###
+{fwd_context}

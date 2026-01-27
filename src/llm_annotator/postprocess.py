@@ -128,7 +128,15 @@ def save_results(batch_results: Dict, transcript_df: pd.DataFrame, feature: str,
                     for utt_id, value in parsed_content.items():
                         match = transcript_df['uttid'] == str(utt_id)
                         if match.any():
-                            transcript_df.loc[match, feature] = value
+                            if isinstance(value, dict):
+                                annotation = value.get("annotation", value.get("label", None))
+                                confidence = value.get("confidence", None)
+                            else:
+                                annotation = value
+                                confidence = None
+                            if confidence is not None:
+                                transcript_df.loc[match, f"{feature}_confidence"] = confidence
+                            transcript_df.loc[match, feature] = annotation
                             if index < len(result_log_probs):
                                 transcript_df.loc[match, f"{model}_logprob"] = result_log_probs[index]
                             annotations_processed += 1
