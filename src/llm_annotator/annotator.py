@@ -373,7 +373,7 @@ def fetch_batch(save_dir: str,
                 batch_id = batch.id
             
 
-            if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
+            if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1", "gpt-5.2"]:
                 client = openai.OpenAI(timeout=180.0)
 
 
