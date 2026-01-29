@@ -131,13 +131,13 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int, featur
             "body": body_data
         }
         
-    # 3) GPT-5-nano and GPT-5-mini and gpt-5.1
-    if model in ["gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
+    # 3) GPT-5-nano and GPT-5-mini and gpt-5.1 and GPT-5.2
+    if model in ["gpt-5-nano", "gpt-5-mini", "gpt-5.1", "gpt-5.2"]:
         # We need the Annotation class for the response_format key
         AnnotationCls = globals().get("Annotation")
         response_format = AnnotationCls.model_json_schema() if AnnotationCls and hasattr(AnnotationCls, "model_json_schema") else None
         
-        if model == "gpt-5.1":
+        if model in ("gpt-5.1", "gpt-5.2"):
             reasoning_setting = {"effort": "none"}
         else:
             reasoning_setting = {"effort": "minimal"}
@@ -325,7 +325,7 @@ def process_requests(model_requests: Dict,
     for model, req_list in model_requests.items():
         req_list = req_list[:100] if if_test else req_list
 
-        if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"]:
+        if model in ["gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1", "gpt-5.2"]:
             batch = batch_openai_annotate(requests=req_list)
 
         elif model == "claude-3-7":
@@ -358,7 +358,7 @@ def fetch_batch(save_dir: str,
     if not batches:
         batches = load_batch_files(timestamp=timestamp, feature=feature, save_dir=save_dir)
     
-    if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano","gpt-5-mini", "gpt-5.1"]) else True
+    if_gpt_finished = False if any(m in batches.keys() for m in ["gpt-4o", "gpt-5-nano","gpt-5-mini", "gpt-5.1", "gpt-5.2"]) else True
 
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
