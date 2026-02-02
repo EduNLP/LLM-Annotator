@@ -11,6 +11,7 @@ class ModelType(Enum):
     GPT5_NANO = "gpt-5-nano"
     GPT5_MINI = "gpt-5-mini" 
     GPT5_1 = "gpt-5.1"  # Added
+    GPT5_2 = "gpt-5.2"
     CLAUDE = "claude-3-5-sonnet-20241022"
     GEMINI = "gemini-1.5-pro"
     MISTRAL = "mistral--large-latest"
@@ -34,6 +35,7 @@ model_configs = {
         "gpt-5-nano": ModelConfig(ModelType.GPT5_NANO),
         "gpt-5-mini": ModelConfig(ModelType.GPT5_MINI),  # Added
         "gpt-5.1": ModelConfig(ModelType.GPT5_1),  # Added
+        "gpt-5.2": ModelConfig(ModelType.GPT5_2),
         "claude-3-5": ModelConfig(ModelType.CLAUDE),
         "gemini-1.5-pro": ModelConfig(ModelType.GEMINI),
         "mistral": ModelConfig(ModelType.MISTRAL),
@@ -49,6 +51,7 @@ annotation_configs = {
     "gpt-5-nano": batch_openai_annotate, 
     "gpt-5-mini": batch_openai_annotate,  # Added
     "gpt-5.1": batch_openai_annotate,  # Added
+    "gpt-5.2": batch_openai_annotate,
     "llama-3b-local": lambda requests: batch_local_llm_annotate(requests, "meta-llama/Llama-3.2-3B-Instruct"),
     "llama-70b-local": lambda requests: batch_local_llm_annotate(requests, "meta-llama/Llama-3.3-70B-Instruct")
 }

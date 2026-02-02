@@ -72,9 +72,9 @@ def save_results(batch_results: Dict, transcript_df: pd.DataFrame, feature: str,
         annotations_processed = 0
         
         # =====================================================
-        # 1. OPENAI MODELS (gpt-4o, gpt-5-nano, gpt-5-mini, gpt-5.1)
+        # 1. OPENAI MODELS (gpt-4o, gpt-5-nano, gpt-5-mini, gpt-5.1, gpt-5.2)
         # =====================================================
-        if model in ("gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1"):
+        if model in ("gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1", "gpt-5.2"):
             try:
                 if not batch_content: continue
                 
