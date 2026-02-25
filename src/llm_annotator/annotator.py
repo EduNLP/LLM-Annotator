@@ -291,10 +291,28 @@ def process_observations(transcript_df: pd.DataFrame,
         # COMMON STEP: CREATE PROMPT AND MODEL REQUESTS (RESTORED)
         # -----------------------------------------------------------
         
+        # Activity instructions context (only for Directions feature)
+        activity_instructions = ""
+        feature = kwargs.get("feature", "")
+        activity_instructions_text_dir = kwargs.get("activity_instructions_text_dir", "")
+        if feature == "Directions" and activity_instructions_text_dir and os.path.isdir(activity_instructions_text_dir):
+            row = batch_uttr.iloc[0]
+            obsid = str(int(row["obsid"])) if row["obsid"] is not None else ""
+            seg_id = row.get("segment_id_1sd", "")
+            if obsid and seg_id and "_segment_" in seg_id:
+                seg_num = int(seg_id.split("_segment_")[-1])
+                seg_letter = chr(ord("a") + seg_num - 1) if 1 <= seg_num <= 7 else ""
+                if seg_letter:
+                    path = os.path.join(activity_instructions_text_dir, f"{obsid}_{seg_letter}.txt")
+                    if os.path.isfile(path):
+                        with open(path, "r", encoding="utf-8") as f:
+                            activity_instructions = f.read()
+        
         # Create prompt by passing all context variables (empty if not used)
         prompt = prompt_template.format(dialogue=combined_dialogue,
                                        bwd_context=bwd_context,
-                                       fwd_context=fwd_context)
+                                       fwd_context=fwd_context,
+                                       activity_instructions=activity_instructions)
 
 
 

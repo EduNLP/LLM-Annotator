@@ -36,7 +36,8 @@ def annotate(
         save_dir="",
         mode: str = "",
         fwd_context_count: int = 0, # Defaults to 0 (no forward context)
-        bwd_context_count: int = 0  # Defaults to 0 (no backward context)
+        bwd_context_count: int = 0,  # Defaults to 0 (no backward context)
+        activity_instructions_text_dir: str = ""
 ):
     pipe = simple_llm_pipe(model_list=model_list,
                            obs_list=obs_list,
@@ -51,7 +52,8 @@ def annotate(
                            save_dir=save_dir,
                            n_uttr=n_uttr,
                            fwd_context_count=fwd_context_count, 
-                           bwd_context_count=bwd_context_count)
+                           bwd_context_count=bwd_context_count,
+                           activity_instructions_text_dir=activity_instructions_text_dir)
     pipe()
 
 

@@ -49,6 +49,7 @@ def escape_literal_braces(template: str) -> str:
     template = template.replace('{summary}', '@@SUMMARY_TAG@@')
     template = template.replace('{bwd_context}', '@@BWD_CONTEXT_TAG@@') 
     template = template.replace('{fwd_context}', '@@FWD_CONTEXT_TAG@@')
+    template = template.replace('{activity_instructions}', '@@ACTIVITY_INSTRUCTIONS_TAG@@')
     
     # 2. Globally escape all remaining single braces (in the dictionary, etc.).
     # This turns '{' into '{{' and '}' into '}}', making them literal text.
@@ -61,6 +62,7 @@ def escape_literal_braces(template: str) -> str:
     template = template.replace('@@SUMMARY_TAG@@', '{summary}')
     template = template.replace('@@BWD_CONTEXT_TAG@@', '{bwd_context}')
     template = template.replace('@@FWD_CONTEXT_TAG@@', '{fwd_context}')
+    template = template.replace('@@ACTIVITY_INSTRUCTIONS_TAG@@', '{activity_instructions}')
 
     return template
 
@@ -109,7 +111,8 @@ def replace_template_variables(template: str, definition: str, examples: str):
         dialogue='{dialogue}', # Pass-through for later formatting
         summary='{summary}',    # Pass-through for later formatting
         bwd_context='{bwd_context}', 
-        fwd_context='{fwd_context}'
+        fwd_context='{fwd_context}',
+        activity_instructions='{activity_instructions}'
     )
 
 
