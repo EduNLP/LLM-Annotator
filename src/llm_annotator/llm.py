@@ -18,6 +18,13 @@ from datetime import datetime, timezone
 
 from llm_annotator.utils import create_batch_dir
 
+# Gemini
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 # Local LLM imports
 try:
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
@@ -207,6 +214,84 @@ def batch_anthropic_annotate(requests: List[Request]):
         requests=requests
     )
     return message_batch
+
+
+def batch_gemini_annotate(requests: List[Dict]) -> List[Dict]:
+    """
+    Run Gemini 1.5 Pro for each request (text + optional video parts).
+    Returns a list of result dicts in the same shape as local models so fetch_batch/save_results work.
+    """
+    if not GEMINI_AVAILABLE:
+        raise ImportError("google-generativeai is required for Gemini. Install with: pip install google-generativeai")
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("Set GOOGLE_API_KEY or GEMINI_API_KEY for Gemini.")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-pro")
+    results = []
+    for i, req in enumerate(requests):
+        custom_id = req.get("custom_id", f"request_{i}")
+        try:
+            body = req.get("body", {})
+            contents = body.get("contents", [])
+            if not contents:
+                results.append(_gemini_error_result(custom_id, "missing contents"))
+                continue
+            parts = contents[0].get("parts", [])
+            # Convert to SDK format: text -> {"text": "..."}, inline_data -> {"inline_data": {"mime_type": ..., "data": ...}}
+            sdk_parts = []
+            for part in parts:
+                if "text" in part:
+                    sdk_parts.append(part["text"])
+                elif "inline_data" in part:
+                    idata = part["inline_data"]
+                    sdk_parts.append({
+                        "inline_data": {
+                            "mime_type": idata.get("mime_type", "video/mp4"),
+                            "data": idata.get("data", ""),
+                        }
+                    })
+                elif "inlineData" in part:
+                    idata = part["inlineData"]
+                    sdk_parts.append({
+                        "inline_data": {
+                            "mime_type": idata.get("mimeType", idata.get("mime_type", "video/mp4")),
+                            "data": idata.get("data", ""),
+                        }
+                    })
+            if not sdk_parts:
+                results.append(_gemini_error_result(custom_id, "empty parts"))
+                continue
+            response = model.generate_content(
+                sdk_parts,
+                generation_config=body.get("generationConfig") or {"max_output_tokens": 1000, "temperature": 0},
+            )
+            text = (response.text or "").strip()
+            if not text:
+                results.append(_gemini_error_result(custom_id, "empty response"))
+                continue
+            results.append({
+                "custom_id": custom_id,
+                "response": {
+                    "body": {
+                        "choices": [{"message": {"content": text}}]
+                    }
+                }
+            })
+        except Exception as e:
+            results.append(_gemini_error_result(custom_id, str(e)))
+    return results
+
+
+def _gemini_error_result(custom_id: str, reason: str) -> Dict:
+    return {
+        "custom_id": custom_id,
+        "response": {
+            "body": {
+                "choices": [{"message": {"content": json.dumps({"error": reason, "annotation": 0})}}]
+            }
+        }
+    }
 
 
 # Global cache for local models to avoid reloading
@@ -488,6 +573,24 @@ def store_batch(batches: Dict,
             batch_metadata = {
                 "model": model,
                 "type": "local_batch",
+                "processing_status": "completed",
+                "request_counts": {
+                    "processing": 0,
+                    "succeeded": len(batch_file),
+                    "errored": 0,
+                    "canceled": 0,
+                    "expired": 0
+                },
+                "total_requests": len(batch_file),
+                "created_at": datetime.now().isoformat(),
+                "completed_at": datetime.now().isoformat(),
+                "stored_at": datetime.now().isoformat()
+            }
+        elif model == "gemini-1.5-pro":
+            # Gemini returns a list of results (same shape as local)
+            batch_metadata = {
+                "model": model,
+                "type": "gemini_batch",
                 "processing_status": "completed",
                 "request_counts": {
                     "processing": 0,
