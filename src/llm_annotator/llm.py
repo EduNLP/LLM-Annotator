@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 
 from llm_annotator.utils import create_batch_dir
+from llm_annotator.constants import GEMINI_MODEL_IDS
 
 # Gemini
 try:
@@ -216,9 +217,14 @@ def batch_anthropic_annotate(requests: List[Request]):
     return message_batch
 
 
+# Cache for Gemini GenerativeModel instances by model_id
+_gemini_model_cache: Dict[str, "genai.GenerativeModel"] = {}
+
+
 def batch_gemini_annotate(requests: List[Dict]) -> List[Dict]:
     """
-    Run Gemini 1.5 Pro for each request (text + optional video parts).
+    Run a supported Gemini model for each request (text + optional video parts).
+    Model ID is read from each request body; must be one of GEMINI_MODEL_IDS.
     Returns a list of result dicts in the same shape as local models so fetch_batch/save_results work.
     """
     if not GEMINI_AVAILABLE:
@@ -227,12 +233,18 @@ def batch_gemini_annotate(requests: List[Dict]) -> List[Dict]:
     if not api_key:
         raise ValueError("Set GOOGLE_API_KEY or GEMINI_API_KEY for Gemini.")
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
     results = []
     for i, req in enumerate(requests):
         custom_id = req.get("custom_id", f"request_{i}")
         try:
             body = req.get("body", {})
+            model_id = body.get("model", "gemini-2.5-flash")
+            if model_id not in GEMINI_MODEL_IDS:
+                results.append(_gemini_error_result(custom_id, f"unsupported model: {model_id}"))
+                continue
+            if model_id not in _gemini_model_cache:
+                _gemini_model_cache[model_id] = genai.GenerativeModel(model_id)
+            model = _gemini_model_cache[model_id]
             contents = body.get("contents", [])
             if not contents:
                 results.append(_gemini_error_result(custom_id, "missing contents"))
@@ -586,7 +598,7 @@ def store_batch(batches: Dict,
                 "completed_at": datetime.now().isoformat(),
                 "stored_at": datetime.now().isoformat()
             }
-        elif model == "gemini-1.5-pro":
+        elif model in GEMINI_MODEL_IDS:
             # Gemini returns a list of results (same shape as local)
             batch_metadata = {
                 "model": model,

@@ -11,6 +11,7 @@ import json
 import re # <-- NECESSARY IMPORT
 
 import llm_annotator.utils as utils
+from llm_annotator.constants import GEMINI_MODEL_IDS
 from typing import Dict, Any, Union
 
 
@@ -182,9 +183,9 @@ def save_results(batch_results: Dict, transcript_df: pd.DataFrame, feature: str,
                 print(f"Error processing {model}: {e}")
 
         # =====================================================
-        # 3. GEMINI (gemini-1.5-pro) – list of results, same shape as local
+        # 3. GEMINI (any supported Gemini model) – list of results, same shape as local
         # =====================================================
-        elif model == "gemini-1.5-pro":
+        elif model in GEMINI_MODEL_IDS:
             try:
                 if not batch_content:
                     continue

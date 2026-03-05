@@ -14,6 +14,7 @@ from anthropic.types.message_create_params import MessageCreateParamsNonStreamin
 from anthropic.types.messages.batch_create_params import Request
 
 from llm_annotator import utils
+from llm_annotator.constants import GEMINI_MODEL_IDS
 from llm_annotator.llm import batch_anthropic_annotate, batch_openai_annotate, batch_gemini_annotate, store_batch, store_meta
 from llm_annotator.utils import load_batch_files
 
@@ -205,7 +206,7 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int, featur
         }
 
     # 5) Gemini (with optional video clips: target + context window)
-    if model == "gemini-1.5-pro":
+    if model in GEMINI_MODEL_IDS:
         text_part = f"{system_prompt}\n\n{prompt}"
         parts = [{"text": text_part}]
         if clip_paths:
@@ -223,7 +224,7 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int, featur
             "method": "POST",
             "url": "/gemini/generate",
             "body": {
-                "model": "gemini-1.5-pro",
+                "model": model,
                 "contents": [{"role": "user", "parts": parts}],
                 "generationConfig": {"max_output_tokens": 1000, "temperature": 0},
             },
@@ -378,7 +379,7 @@ def process_observations(transcript_df: pd.DataFrame,
                         clip_paths.append(p)
 
         for model in model_list:
-            clip_paths_for_model = clip_paths if model == "gemini-1.5-pro" else None
+            clip_paths_for_model = clip_paths if model in GEMINI_MODEL_IDS else None
             request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i, feature=kwargs.get("feature"), clip_paths=clip_paths_for_model)
             model_reqs[model].append(request)
 
@@ -411,7 +412,7 @@ def process_requests(model_requests: Dict,
         elif model == "claude-3-7":
             batch = batch_anthropic_annotate(requests=req_list)
 
-        elif model == "gemini-1.5-pro":
+        elif model in GEMINI_MODEL_IDS:
             batch = batch_gemini_annotate(requests=req_list)
 
         elif model in ["llama-3b-local", "llama-70b-local"]:
@@ -445,12 +446,12 @@ def fetch_batch(save_dir: str,
 
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
-    if_gemini_finished = False if "gemini-1.5-pro" in batches.keys() else True
+    if_gemini_finished = False if any(m in batches.keys() for m in GEMINI_MODEL_IDS) else True
 
     # Define the function that processes batches and updates results
     def process_batches(if_gpt_finished: bool, if_claude_finished: bool, if_local_finished: bool, if_gemini_finished: bool):
         for model, batch in batches.items():
-            if model in ["llama-3b-local", "llama-70b-local", "gemini-1.5-pro"]:
+            if model in ["llama-3b-local", "llama-70b-local"] or model in GEMINI_MODEL_IDS:
                 # Local/Gemini: batch is already the results list
                 pass
             else:
@@ -540,7 +541,7 @@ def fetch_batch(save_dir: str,
                     # For local models, batch is already the results list
                     results[model] = batch
                     if_local_finished = True
-            elif model == "gemini-1.5-pro":
+            elif model in GEMINI_MODEL_IDS:
                 if not if_gemini_finished:
                     print(f"{model}: Gemini batch completed.")
                     results[model] = batch
