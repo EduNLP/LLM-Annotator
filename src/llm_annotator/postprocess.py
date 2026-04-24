@@ -11,6 +11,7 @@ import json
 import re # <-- NECESSARY IMPORT
 
 import llm_annotator.utils as utils
+from llm_annotator.constants import GEMINI_MODEL_IDS
 from typing import Dict, Any, Union
 
 
@@ -182,7 +183,40 @@ def save_results(batch_results: Dict, transcript_df: pd.DataFrame, feature: str,
                 print(f"Error processing {model}: {e}")
 
         # =====================================================
-        # 3. LOCAL MODELS (llama-*-local)
+        # 3. GEMINI (any supported Gemini model) – list of results, same shape as local
+        # =====================================================
+        elif model in GEMINI_MODEL_IDS:
+            try:
+                if not batch_content:
+                    continue
+                print(f"{model}: Reading {len(batch_content)} results...")
+                for item in batch_content:
+                    text_payload = item
+                    if isinstance(item, dict):
+                        resp = item.get("response", {})
+                        body = resp.get("body", {})
+                        choices = body.get("choices", [])
+                        if choices:
+                            text_payload = choices[0].get("message", {}).get("content", "")
+                        else:
+                            text_payload = str(item)
+                    parsed_content = _extract_json_from_text_block(text_payload)
+                    if not parsed_content:
+                        continue
+                    for utt_id, value in parsed_content.items():
+                        match = transcript_df["uttid"] == str(utt_id)
+                        if match.any():
+                            if isinstance(value, dict):
+                                annotation = value.get("annotation", value.get("label", None))
+                            else:
+                                annotation = value
+                            transcript_df.loc[match, feature] = annotation
+                            annotations_processed += 1
+            except Exception as e:
+                print(f"Error processing {model}: {e}")
+
+        # =====================================================
+        # 4. LOCAL MODELS (llama-*-local)
         # =====================================================
         elif "local" in model:
             try:

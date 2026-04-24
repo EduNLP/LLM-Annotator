@@ -14,7 +14,8 @@ from anthropic.types.message_create_params import MessageCreateParamsNonStreamin
 from anthropic.types.messages.batch_create_params import Request
 
 from llm_annotator import utils
-from llm_annotator.llm import batch_anthropic_annotate, batch_openai_annotate, store_batch, store_meta
+from llm_annotator.constants import GEMINI_MODEL_IDS
+from llm_annotator.llm import batch_anthropic_annotate, batch_openai_annotate, batch_gemini_annotate, store_batch, store_meta
 from llm_annotator.utils import load_batch_files
 
 
@@ -55,6 +56,7 @@ def group_obs(transcript_df: pd.DataFrame,
 
 
 import re
+import base64
 from typing import Dict, List
 import json
 from typing import Dict, Any
@@ -62,10 +64,37 @@ import uuid
 from typing import Optional
 
 
+def get_clip_path_for_row(row, clip_base_dir: str) -> Optional[str]:
+    """
+    Resolve the video clip path for a transcript row. Clip files are expected under
+    clip_base_dir as {obsid}/{obsid}_{segment}_{line}.mp4 (matching precut_videos output).
+    """
+    if not clip_base_dir or not os.path.isdir(clip_base_dir):
+        return None
+    try:
+        obsid = str(int(row["obsid"])) if row["obsid"] is not None else ""
+        line = row.get("line", "")
+        if obsid == "":
+            return None
+        if pd.isna(line) or (isinstance(line, str) and not str(line).strip()):
+            return None
+        line = str(int(line)) if isinstance(line, (int, float)) else str(line)
+        seg_id = row.get("segment_id_1sd", "")
+        seg_label = seg_id.split("_segment_")[-1] if "_segment_" in str(seg_id) else str(seg_id)
+        if seg_label.isdigit():
+            seg_letter = chr(ord("a") + int(seg_label) - 1) if 1 <= int(seg_label) <= 26 else seg_label
+        else:
+            seg_letter = seg_label
+        path = os.path.join(clip_base_dir, obsid, f"{obsid}_{seg_letter}_{line}.mp4")
+        return path if os.path.isfile(path) else None
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
 # Note: Assuming 'Request' and 'MessageCreateParamsNonStreaming' are defined/imported
 # in the global scope of annotator.py, as they are used by this function.
 
-def create_request(model: str, prompt: str, system_prompt: str, idx: int, feature: Optional[str] = None) -> Dict[str, Any]:
+def create_request(model: str, prompt: str, system_prompt: str, idx: int, feature: Optional[str] = None, clip_paths: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Creates a request descriptor for batching using the old, faulty structure
     for OpenAI models.
@@ -175,7 +204,32 @@ def create_request(model: str, prompt: str, system_prompt: str, idx: int, featur
                 "response_format": {"type": "json_object"},
             },
         }
-        
+
+    # 5) Gemini (with optional video clips: target + context window)
+    if model in GEMINI_MODEL_IDS:
+        text_part = f"{system_prompt}\n\n{prompt}"
+        parts = [{"text": text_part}]
+        if clip_paths:
+            for p in clip_paths:
+                if p and os.path.isfile(p):
+                    try:
+                        with open(p, "rb") as f:
+                            video_bytes = f.read()
+                        b64 = base64.standard_b64encode(video_bytes).decode("ascii")
+                        parts.append({"inline_data": {"mime_type": "video/mp4", "data": b64}})
+                    except OSError:
+                        pass
+        return {
+            **batch_metadata,
+            "method": "POST",
+            "url": "/gemini/generate",
+            "body": {
+                "model": model,
+                "contents": [{"role": "user", "parts": parts}],
+                "generationConfig": {"max_output_tokens": 1000, "temperature": 0},
+            },
+        }
+
     # Fallback for unsupported models
     raise ValueError(f"Unsupported model: {model}")
 
@@ -296,11 +350,38 @@ def process_observations(transcript_df: pd.DataFrame,
                                        bwd_context=bwd_context,
                                        fwd_context=fwd_context)
 
-
+        # Resolve video clip path(s): target row(s) + optional context window (bwd, then fwd) for Gemini
+        clip_paths = []
+        clip_base_dir = kwargs.get("clip_base_dir") or ""
+        if kwargs.get("use_video") and clip_base_dir:
+            if n_uttr == 1 and (fwd_context_count > 0 or bwd_context_count > 0):
+                try:
+                    bwd_paths = []
+                    for ri in range(max(0, start_idx_in_segment - bwd_context_count), start_idx_in_segment):
+                        p = get_clip_path_for_row(full_segment.iloc[ri], clip_base_dir)
+                        if p:
+                            bwd_paths.append(p)
+                    target_paths = [get_clip_path_for_row(batch_uttr.iloc[0], clip_base_dir)]
+                    target_paths = [p for p in target_paths if p]
+                    fwd_paths = []
+                    for ri in range(start_idx_in_segment + 1, min(len(full_segment), start_idx_in_segment + 1 + fwd_context_count)):
+                        p = get_clip_path_for_row(full_segment.iloc[ri], clip_base_dir)
+                        if p:
+                            fwd_paths.append(p)
+                    clip_paths = bwd_paths + target_paths + fwd_paths
+                except NameError:
+                    clip_paths = [get_clip_path_for_row(r, clip_base_dir) for _, r in batch_uttr.iterrows()]
+                    clip_paths = [p for p in clip_paths if p]
+            else:
+                for _, r in batch_uttr.iterrows():
+                    p = get_clip_path_for_row(r, clip_base_dir)
+                    if p and p not in clip_paths:
+                        clip_paths.append(p)
 
         for model in model_list:
-           request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i)
-           model_reqs[model].append(request)
+            clip_paths_for_model = clip_paths if model in GEMINI_MODEL_IDS else None
+            request = create_request(model=model, prompt=prompt, system_prompt=system_prompt, idx=i, feature=kwargs.get("feature"), clip_paths=clip_paths_for_model)
+            model_reqs[model].append(request)
 
     return "model_requests", model_reqs
 
@@ -330,7 +411,10 @@ def process_requests(model_requests: Dict,
 
         elif model == "claude-3-7":
             batch = batch_anthropic_annotate(requests=req_list)
-            
+
+        elif model in GEMINI_MODEL_IDS:
+            batch = batch_gemini_annotate(requests=req_list)
+
         elif model in ["llama-3b-local", "llama-70b-local"]:
             from llm_annotator.llm import batch_local_llm_annotate
             model_name = "meta-llama/Llama-3.2-3B-Instruct" if model == "llama-3b-local" else "meta-llama/Llama-3.3-70B-Instruct"
@@ -362,12 +446,13 @@ def fetch_batch(save_dir: str,
 
     if_claude_finished = False if "claude-3-7" in batches.keys() else True
     if_local_finished = False if any(model in ["llama-3b-local", "llama-70b-local"] for model in batches.keys()) else True
+    if_gemini_finished = False if any(m in batches.keys() for m in GEMINI_MODEL_IDS) else True
 
     # Define the function that processes batches and updates results
-    def process_batches(if_gpt_finished: bool, if_claude_finished: bool, if_local_finished: bool):
+    def process_batches(if_gpt_finished: bool, if_claude_finished: bool, if_local_finished: bool, if_gemini_finished: bool):
         for model, batch in batches.items():
-            if model in ["llama-3b-local", "llama-70b-local"]:
-                # Local models don't have batch.id
+            if model in ["llama-3b-local", "llama-70b-local"] or model in GEMINI_MODEL_IDS:
+                # Local/Gemini: batch is already the results list
                 pass
             else:
                 batch_id = batch.id
@@ -456,15 +541,20 @@ def fetch_batch(save_dir: str,
                     # For local models, batch is already the results list
                     results[model] = batch
                     if_local_finished = True
+            elif model in GEMINI_MODEL_IDS:
+                if not if_gemini_finished:
+                    print(f"{model}: Gemini batch completed.")
+                    results[model] = batch
+                    if_gemini_finished = True
 
-        return if_gpt_finished, if_claude_finished, if_local_finished
+        return if_gpt_finished, if_claude_finished, if_local_finished, if_gemini_finished
 
     if if_wait:
         # Use the loop to keep checking until all batches are done
         while True:
-            if_gpt_finished, if_claude_finished, if_local_finished = process_batches(if_gpt_finished, if_claude_finished, if_local_finished)
+            if_gpt_finished, if_claude_finished, if_local_finished, if_gemini_finished = process_batches(if_gpt_finished, if_claude_finished, if_local_finished, if_gemini_finished)
 
-            if if_gpt_finished and if_claude_finished and if_local_finished:
+            if if_gpt_finished and if_claude_finished and if_local_finished and if_gemini_finished:
                 print("All annotation tasks are finished.")
                 break  # Exit loop if all batches are done
             
@@ -472,6 +562,6 @@ def fetch_batch(save_dir: str,
             time.sleep(60)
     else:
         # Execute the batch processing just once without waiting
-        process_batches(if_gpt_finished, if_claude_finished, if_local_finished)
+        process_batches(if_gpt_finished, if_claude_finished, if_local_finished, if_gemini_finished)
 
     return "batch_results", results

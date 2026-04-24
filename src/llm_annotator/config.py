@@ -1,4 +1,5 @@
 from llm_annotator.llm import batch_anthropic_annotate, batch_local_llm_annotate, batch_openai_annotate
+from llm_annotator.constants import GEMINI_MODEL_IDS
 
 from enum import Enum
 from typing import Optional
@@ -13,7 +14,7 @@ class ModelType(Enum):
     GPT5_1 = "gpt-5.1"  # Added
     GPT5_2 = "gpt-5.2"
     CLAUDE = "claude-3-5-sonnet-20241022"
-    GEMINI = "gemini-1.5-pro"
+    GEMINI = "gemini"
     MISTRAL = "mistral--large-latest"
     DEEPSEEK = "deepseek-chat"
     LLAMA3B = "meta-llama/Llama-3.2-3B-Instruct"
@@ -37,7 +38,7 @@ model_configs = {
         "gpt-5.1": ModelConfig(ModelType.GPT5_1),  # Added
         "gpt-5.2": ModelConfig(ModelType.GPT5_2),
         "claude-3-5": ModelConfig(ModelType.CLAUDE),
-        "gemini-1.5-pro": ModelConfig(ModelType.GEMINI),
+        **{mid: ModelConfig(ModelType.GEMINI) for mid in GEMINI_MODEL_IDS},
         "mistral": ModelConfig(ModelType.MISTRAL),
         "deepseek-v3": ModelConfig(ModelType.DEEPSEEK),
         "llama-3.2-3b": ModelConfig(ModelType.LLAMA3B),
