@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gaze & Gesture Annotator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.4.0/dist/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg0:#0d0d0d; --bg1:#141414; --bg2:#1a1a1a; --bg3:#212121; --bg4:#2a2a2a;
+  --line:#252525; --line2:#333;
+  --tx0:#eceae5; --tx1:#aaa8a3; --tx2:#6e6b67; --tx3:#3e3c3a;
+  --acc:#e8c547; --acc2:#c8a830;
+  --gaze:#4a9edd; --gaze-dim:rgba(74,158,221,0.10);
+  --gest:#9b7fe8; --gest-dim:rgba(155,127,232,0.10);
+  --red:#e05a4b; --grn:#4caf7d;
+  --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --r4:4px; --r6:6px; --r8:8px; --r12:12px;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--font);background:var(--bg0);color:var(--tx0);font-size:13px;line-height:1.4;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+
+/* ── Modal / overlay ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:400;}
+.overlay.hidden{display:none;}
+.modal{background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r12);padding:28px;width:500px;max-width:95vw;max-height:92vh;overflow-y:auto;}
+.modal h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px;letter-spacing:-.2px;}
+.fl{display:block;font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--tx2);margin-bottom:5px;}
+.fg{margin-bottom:14px;}
+.field{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r6);padding:7px 10px;color:var(--tx0);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;}
+.field:focus{border-color:var(--acc);}
+.field::placeholder{color:var(--tx3);}
+.divider{height:1px;background:var(--line);margin:14px 0;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+.s-entry{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.s-entry input{flex:1;}
+.s-num{font-size:10px;color:var(--tx3);font-family:var(--mono);min-width:22px;}
+.del-btn{background:none;border:none;font-size:15px;color:var(--tx3);cursor:pointer;line-height:1;transition:color .1s;padding:0 2px;}
+.del-btn:hover{color:var(--red);}
+.add-link{font-size:12px;color:var(--acc);background:none;border:none;font-family:var(--font);cursor:pointer;display:flex;align-items:center;gap:4px;opacity:.85;}
+.add-link:hover{opacity:1;text-decoration:underline;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 11px;font-size:12px;font-family:var(--font);font-weight:500;color:var(--tx1);background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r6);cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.1px;}
+.btn:hover{background:var(--bg4);color:var(--tx0);border-color:var(--line2);}
+.btn.primary{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600;}
+.btn.primary:hover{background:var(--acc2);}
+.btn.sm{padding:4px 9px;font-size:11px;}
+.btn i{font-size:13px;flex-shrink:0;}
+input[type=file]{display:none;}
+label.btn{cursor:pointer;}
+kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(--line2);border-radius:3px;background:var(--bg2);color:var(--tx2);}
+
+/* ── Popup ── */
+.popup{position:fixed;z-index:500;background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r12);padding:16px 18px;box-shadow:0 12px 48px rgba(0,0,0,.65);width:310px;}
+.popup-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.popup-title i{font-size:15px;flex-shrink:0;}
+.tbadge{font-size:10px;font-family:var(--mono);color:var(--tx2);background:var(--bg3);border:1px solid var(--line);border-radius:var(--r4);padding:2px 6px;margin-left:auto;}
+.pf{margin-bottom:10px;}
+.pf label{display:block;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--tx2);margin-bottom:4px;}
+.pf .field{padding:5px 8px;font-size:12px;}
+.popup-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:14px;padding-top:10px;border-top:1px solid var(--line);}
+
+/* ── Quick-pick grid ── */
+.qk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:10px;}
+.qk{
+  position:relative;display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  font-size:12px;font-family:var(--font);font-weight:500;
+  border-radius:var(--r6);border:1.5px solid var(--line2);
+  cursor:pointer;color:var(--tx1);background:var(--bg2);
+  transition:border-color .12s,background .12s,color .12s,opacity .12s;
+  user-select:none;text-align:left;line-height:1.2;
+}
+.qk:hover{background:var(--bg3);color:var(--tx0);}
+.qk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:transform .1s;}
+.qk-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.qk-num{font-size:9px;font-family:var(--mono);color:var(--tx3);flex-shrink:0;background:var(--bg3);border-radius:3px;padding:1px 4px;line-height:1.4;}
+.qk-check{display:none;font-size:13px;flex-shrink:0;font-weight:700;margin-left:auto;}
+/* Selected */
+.qk.qk-selected{border-width:2px;color:#fff;font-weight:600;}
+.qk.qk-selected .qk-dot{transform:scale(1.2);}
+.qk.qk-selected .qk-num{display:none;}
+.qk.qk-selected .qk-check{display:block;}
+/* Unselected when something else is chosen */
+.qk.qk-dim{opacity:.4;}
+
+/* ── App shell ── */
+.app{display:flex;flex-direction:column;height:100vh;}
+
+/* Topbar — single row, no wrap */
+.topbar{display:flex;align-items:center;gap:4px;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--bg1);flex-shrink:0;min-height:42px;}
+.brand{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;margin-right:4px;letter-spacing:.1px;flex-shrink:0;}
+.brand-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;}
+.sess-badge{font-size:10px;font-family:var(--mono);color:var(--tx2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sep{width:1px;height:16px;background:var(--line2);margin:0 4px;flex-shrink:0;}
+/* Pill toggle */
+.pill{display:flex;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r6);overflow:hidden;flex-shrink:0;}
+.pill button{padding:4px 10px;font-size:11px;font-family:var(--font);font-weight:500;border:none;cursor:pointer;transition:all .12s;color:var(--tx2);background:transparent;white-space:nowrap;}
+.pill button:not(:last-child){border-right:1px solid var(--line2);}
+.pill button.on-gaze{background:var(--gaze-dim);color:var(--gaze);}
+.pill button.on-gest{background:var(--gest-dim);color:var(--gest);}
+.pill button.on-acc{background:rgba(232,197,71,.12);color:var(--acc);}
+/* Push actions to right */
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:4px;}
+
+/* ── Main ── */
+.main{display:flex;flex:1;min-height:0;}
+
+/* Left column */
+.left{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line);}
+
+/* Video area */
+.varea{background:#000;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.vph{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--tx3);padding:28px;user-select:none;}
+.vph i{font-size:40px;}
+.vph p{font-size:13px;color:var(--tx2);}
+.vph small{font-size:11px;}
+#video{display:none;max-height:36vh;width:100%;object-fit:contain;}
+
+/* Player bar */
+.player{display:flex;align-items:center;border-bottom:1px solid var(--line);background:var(--bg1);flex-shrink:0;}
+.transport{display:flex;align-items:center;gap:0;padding:5px 8px;border-right:1px solid var(--line);flex-shrink:0;}
+.tbtn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--r6);cursor:pointer;color:var(--tx2);background:none;border:none;transition:all .1s;flex-shrink:0;}
+.tbtn:hover{background:var(--bg3);color:var(--tx0);}
+.tbtn.play{width:34px;height:34px;background:var(--acc);color:#111;border-radius:var(--r8);margin:0 2px;}
+.tbtn.play:hover{background:var(--acc2);}
+.tbtn i{font-size:15px;}
+.tbtn.play i{font-size:17px;}
+/* Seek */
+.seek-wrap{flex:1;padding:8px 14px;display:flex;flex-direction:column;gap:5px;min-width:0;}
+.seekbar{position:relative;height:5px;background:var(--bg4);border-radius:3px;cursor:pointer;}
+.seek-fill{position:absolute;left:0;top:0;height:100%;background:var(--acc);border-radius:3px;pointer-events:none;}
+.seek-thumb{position:absolute;top:50%;width:12px;height:12px;background:var(--acc);border:2px solid var(--bg0);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;transition:transform .1s;}
+.seekbar:hover .seek-thumb{transform:translate(-50%,-50%) scale(1.25);}
+.seg-hl{position:absolute;top:0;height:100%;border-radius:3px;pointer-events:none;display:none;}
+.seek-times{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-family:var(--mono);color:var(--tx2);}
+.t-seg{color:var(--acc);font-weight:500;display:none;}
+/* Speed */
+.player-right{display:flex;align-items:center;gap:6px;padding:0 10px;border-left:1px solid var(--line);flex-shrink:0;}
+.speed-sel{background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r4);color:var(--tx1);font-family:var(--mono);font-size:11px;padding:3px 5px;outline:none;}
+.speed-sel:focus{border-color:var(--acc);}
+
+/* Timeline */
+.tl-section{flex:1;display:flex;flex-direction:column;min-height:0;}
+.tl-bar{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid var(--line);background:var(--bg1);flex-shrink:0;gap:8px;min-height:30px;}
+.tl-lbl{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--tx2);}
+.tl-mode{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
+.tl-mode.gaze{background:var(--gaze-dim);color:var(--gaze);}
+.tl-mode.gest{background:var(--gest-dim);color:var(--gest);}
+.tl-hint{font-size:10px;color:var(--tx3);margin-left:auto;}
+.tl-scroll{flex:1;overflow-y:auto;overflow-x:hidden;}
+#tl{display:block;cursor:crosshair;}
+
+/* ── Sidebar: stacked panels ── */
+.sidebar{width:340px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg1);}
+
+/* Gaze panel (top half) + Gesture panel (bottom half) */
+.panel{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0;}
+.panel+.panel{border-top:2px solid var(--line2);}
+.panel-head{padding:8px 12px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;gap:7px;}
+.panel-icon{width:20px;height:20px;border-radius:var(--r4);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.panel-icon.gaze{background:rgba(74,158,221,0.15);}
+.panel-icon.gest{background:rgba(155,127,232,0.15);}
+.panel-icon i{font-size:12px;}
+.panel-icon.gaze i{color:var(--gaze);}
+.panel-icon.gest i{color:var(--gest);}
+.panel-title{font-size:11px;font-weight:600;}
+.panel-title.gaze{color:var(--gaze);}
+.panel-title.gest{color:var(--gest);}
+.panel-count{font-size:10px;font-family:var(--mono);color:var(--tx3);background:var(--bg3);padding:1px 6px;border-radius:10px;}
+.panel-filters{display:flex;gap:5px;padding:6px 10px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.panel-filters select{flex:1;min-width:0;font-size:11px;padding:3px 6px;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r4);color:var(--tx1);outline:none;font-family:var(--font);}
+.panel-filters select:focus{border-color:var(--acc);}
+
+/* Annotation list */
+.ann-list{flex:1;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:3px;}
+.ann-item{padding:7px 9px;border-radius:var(--r6);border:1px solid var(--line);cursor:pointer;transition:border-color .1s,background .1s;}
+.ann-item:hover{border-color:var(--line2);background:var(--bg2);}
+.ann-item.sel-gaze{border-color:rgba(74,158,221,.4);background:rgba(74,158,221,.06);}
+.ann-item.sel-gest{border-color:rgba(155,127,232,.4);background:rgba(155,127,232,.06);}
+/* Top line of annotation item */
+.ann-top{display:flex;align-items:center;gap:5px;min-width:0;}
+.adot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.asq{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+.ann-who{font-size:11px;font-weight:600;color:var(--tx1);flex-shrink:0;white-space:nowrap;}
+.ann-arr{font-size:10px;color:var(--tx3);flex-shrink:0;}
+.ann-what{font-size:11px;font-weight:500;color:var(--tx0);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+/* Bottom line: time + delete */
+.ann-bot{display:flex;align-items:center;justify-content:space-between;margin-top:3px;}
+.ann-time{font-size:10px;font-family:var(--mono);color:var(--tx2);}
+.ann-note-txt{font-size:10px;color:var(--tx2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:60%;}
+.adel{font-size:12px;color:var(--tx3);cursor:pointer;opacity:0;background:none;border:none;flex-shrink:0;line-height:1;transition:all .1s;}
+.ann-item:hover .adel{opacity:1;}
+.adel:hover{color:var(--red);}
+.empty-st{text-align:center;padding:20px 10px;color:var(--tx3);font-size:11px;line-height:1.8;}
+
+/* Note editor */
+.note-panel{border-top:1px solid var(--line);padding:7px 10px;flex-shrink:0;}
+.note-panel label{display:block;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tx2);margin-bottom:4px;}
+.note-panel textarea{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r4);padding:5px 7px;color:var(--tx0);font-family:var(--font);font-size:11px;resize:none;height:40px;outline:none;}
+.note-panel textarea:focus{border-color:var(--acc);}
+.note-panel textarea::placeholder{color:var(--tx3);}
+
+/* Export bar */
+.export-bar{border-top:2px solid var(--line2);padding:8px 10px;background:var(--bg1);flex-shrink:0;display:flex;gap:4px;}
+.exp-grp{display:flex;gap:3px;align-items:center;}
+.exp-grp+.exp-grp{padding-left:8px;border-left:1px solid var(--line2);}
+.exp-label{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--tx3);margin-right:2px;}
+.exp-btn{font-size:10px;padding:4px 7px;}
+
+/* Status bar */
+.statusbar{display:flex;align-items:center;gap:8px;padding:4px 12px;border-top:1px solid var(--line);background:var(--bg1);font-size:10px;color:var(--tx2);flex-shrink:0;}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--tx3);transition:background .2s;flex-shrink:0;}
+.sdot.playing{background:var(--grn);}
+.sdot.seg{background:var(--acc);}
+.kbds{margin-left:auto;display:flex;gap:3px;align-items:center;flex-wrap:nowrap;overflow:hidden;}
+
+/* Setup dropzone */
+#setup-dropzone{border:1.5px dashed var(--line2);border-radius:var(--r8);padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;}
+#setup-dropzone:hover{border-color:var(--acc);background:rgba(232,197,71,.03);}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP MODAL ══ -->
+<div class="overlay" id="setup-overlay">
+<div class="modal" style="width:520px">
+  <h2><div style="width:9px;height:9px;border-radius:50%;background:var(--acc)"></div>Gaze & Gesture Annotator</h2>
+
+  <!-- Step indicators -->
+  <div style="display:flex;align-items:center;gap:0;margin:10px 0 20px">
+    <div id="si1" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500">
+      <div id="sn1" style="width:20px;height:20px;border-radius:50%;background:var(--acc);color:#000;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">1</div>
+      <span id="sl1" style="color:var(--acc)">Load video</span>
+    </div>
+    <div style="flex:1;height:1px;background:var(--line);margin:0 10px"></div>
+    <div id="si2" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;opacity:.3">
+      <div id="sn2" style="width:20px;height:20px;border-radius:50%;background:var(--line2);color:var(--tx2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">2</div>
+      <span id="sl2" style="color:var(--tx2)">Configure</span>
+    </div>
+  </div>
+
+  <!-- Step 1 -->
+  <div id="step1">
+    <div id="setup-dropzone">
+      <i class="ti ti-video-plus" style="font-size:36px;color:var(--tx3);display:block;margin-bottom:10px"></i>
+      <p style="font-size:13px;color:var(--tx1);margin-bottom:4px">Drop video here</p>
+      <p style="font-size:11px;color:var(--tx3)">or click to browse — MP4, WebM, MOV</p>
+    </div>
+    <input type="file" id="setup-video-upload" accept="video/*">
+    <div id="setup-preview-wrap" style="display:none;margin-top:12px">
+      <video id="setup-preview-video" controls style="width:100%;border-radius:8px;background:#000;max-height:200px;display:block"></video>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <i class="ti ti-check" style="color:var(--grn);font-size:14px"></i>
+        <span id="setup-video-info" style="font-size:11px;color:var(--tx2);font-family:var(--mono)"></span>
+        <button class="btn sm" id="setup-change" style="margin-left:auto"><i class="ti ti-refresh"></i> Change</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn primary" id="s-next" disabled><i class="ti ti-arrow-right"></i> Next</button>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div id="step2" style="display:none">
+    <div class="fg"><label class="fl">Session ID</label><input class="field" id="s-name" type="text" placeholder="e.g. session_01_groupA"></div>
+    <div class="divider"></div>
+    <div class="fg">
+      <label class="fl">Students</label>
+      <div style="display:flex;gap:7px;align-items:center;margin-bottom:9px">
+        <input class="field" id="s-count" type="number" min="1" max="12" value="3" style="width:64px">
+        <button class="btn" id="s-gen" style="flex:1"><i class="ti ti-refresh"></i> Generate</button>
+      </div>
+      <div id="s-student-list" style="margin-bottom:7px"></div>
+      <button class="add-link" id="s-add"><i class="ti ti-plus" style="font-size:12px"></i> Add student</button>
+    </div>
+    <div class="divider"></div>
+    <div class="fg">
+      <label class="fl">Default mode</label>
+      <div style="display:flex;gap:14px">
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="s-mode" value="segment" checked> Segment</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="s-mode" value="point"> Point</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="s-back"><i class="ti ti-arrow-left"></i> Back</button>
+      <button class="btn primary" id="s-start"><i class="ti ti-player-play"></i> Start</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ GAZE POPUP ══ -->
+<div class="popup" id="gaze-popup" style="display:none;width:340px">
+  <div class="popup-title" style="color:var(--gaze)"><i class="ti ti-eye"></i> Gaze event <span class="tbadge" id="gp-time"></span></div>
+  <div class="pf"><label>Who is looking</label><select class="field" id="gp-gazer"></select></div>
+  <div class="pf">
+    <label>Looking at <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–8 to quick-pick)</span></label>
+    <div class="qk-grid" id="gp-quick"></div>
+    <select class="field" id="gp-target"></select>
+  </div>
+  <div class="pf"><label>Note</label><input type="text" class="field" id="gp-note" placeholder="optional…"></div>
+  <div class="popup-actions">
+    <button class="btn sm" id="gp-cancel">Cancel</button>
+    <button class="btn primary sm" id="gp-save"><i class="ti ti-check"></i> Save</button>
+  </div>
+</div>
+
+<!-- ══ GESTURE POPUP ══ -->
+<div class="popup" id="gest-popup" style="display:none;width:340px">
+  <div class="popup-title" style="color:var(--gest)"><i class="ti ti-hand-stop"></i> Gesture <span class="tbadge" id="gp2-time"></span></div>
+  <div class="pf"><label>Student</label><select class="field" id="gp2-student"></select></div>
+  <div class="pf">
+    <label>Gesture <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–8 to quick-pick)</span></label>
+    <div class="qk-grid" id="gp2-quick"></div>
+    <select class="field" id="gp2-type"></select>
+  </div>
+  <div class="pf"><label>Note</label><input type="text" class="field" id="gp2-note" placeholder="optional…"></div>
+  <div class="popup-actions">
+    <button class="btn sm" id="gp2-cancel">Cancel</button>
+    <button class="btn primary sm" id="gp2-save"><i class="ti ti-check"></i> Save</button>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div class="app" id="app" style="display:none">
+  <div class="topbar">
+    <div class="brand"><div class="brand-dot"></div>ANNOTATOR <span class="sess-badge" id="sess-badge"></span></div>
+    <div class="sep"></div>
+    <div class="pill" id="mode-pill">
+      <button id="pill-gaze" class="on-gaze"><i class="ti ti-eye" style="font-size:12px"></i> Gaze</button>
+      <button id="pill-gest"><i class="ti ti-hand-stop" style="font-size:12px"></i> Gesture</button>
+    </div>
+    <div class="sep"></div>
+    <div class="pill">
+      <button id="pill-seg" class="on-acc">Segment</button>
+      <button id="pill-pt">Point</button>
+    </div>
+    <div class="topbar-right">
+      <label class="btn sm" for="v-upload"><i class="ti ti-upload"></i> Video</label>
+      <input type="file" id="v-upload" accept="video/*">
+      <label class="btn sm" for="j-import"><i class="ti ti-database-import"></i> Load</label>
+      <input type="file" id="j-import" accept=".json">
+      <button class="btn sm" id="btn-edit-session" title="Edit session"><i class="ti ti-settings"></i></button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <!-- Video -->
+      <div class="varea" id="varea">
+        <div class="vph" id="vph"><i class="ti ti-video-off"></i><p>Load a video</p><small>MP4 / WebM / MOV or drag & drop</small></div>
+        <video id="video" playsinline></video>
+      </div>
+
+      <!-- Player -->
+      <div class="player">
+        <div class="transport">
+          <button class="tbtn" id="tb-b5" title="−5s (J)"><i class="ti ti-rewind"></i></button>
+          <button class="tbtn" id="tb-b1" title="−1 frame (←)"><i class="ti ti-player-skip-back"></i></button>
+          <button class="tbtn play" id="tb-play" title="Play/pause (Space)"><i class="ti ti-player-play"></i></button>
+          <button class="tbtn" id="tb-f1" title="+1 frame (→)"><i class="ti ti-player-skip-forward"></i></button>
+          <button class="tbtn" id="tb-f5" title="+5s (L)"><i class="ti ti-fast-forward"></i></button>
+        </div>
+        <div class="seek-wrap">
+          <div class="seekbar" id="seekbar">
+            <div class="seg-hl" id="seg-hl"></div>
+            <div class="seek-fill" id="seek-fill" style="width:0%"></div>
+            <div class="seek-thumb" id="seek-thumb" style="left:0%"></div>
+          </div>
+          <div class="seek-times">
+            <span id="t-cur" style="font-family:var(--mono)">0.000</span>
+            <span class="t-seg" id="t-seg"></span>
+            <span id="t-dur" style="font-family:var(--mono)">0.000</span>
+          </div>
+        </div>
+        <div class="player-right">
+          <select class="speed-sel" id="speed">
+            <option value="0.1">0.1×</option><option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option><option value="2">2×</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="tl-section">
+        <div class="tl-bar">
+          <span class="tl-lbl">Timeline</span>
+          <span class="tl-mode gaze" id="tl-mode-badge">Gaze</span>
+          <span class="tl-hint" id="tl-hint">drag to annotate · dbl-click to seek</span>
+        </div>
+        <div class="tl-scroll" id="tl-scroll"><canvas id="tl"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Right sidebar: stacked gaze + gesture panels -->
+    <div class="sidebar">
+
+      <!-- Gaze panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-icon gaze"><i class="ti ti-eye"></i></div>
+          <span class="panel-title gaze">Gaze events</span>
+          <span class="panel-count" id="gaze-count">0</span>
+        </div>
+        <div class="panel-filters">
+          <select id="fg-gazer"><option value="">All gazers</option></select>
+          <select id="fg-target"><option value="">All targets</option></select>
+        </div>
+        <div class="ann-list" id="gaze-list"><div class="empty-st">No gaze events yet.<br>Select <b style="color:var(--gaze)">Gaze</b> mode and<br>drag the timeline.</div></div>
+        <div class="note-panel" id="gaze-note-panel" style="display:none">
+          <label>Note</label><textarea id="gaze-note" placeholder="Add a note…"></textarea>
+        </div>
+      </div>
+
+      <!-- Gesture panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-icon gest"><i class="ti ti-hand-stop"></i></div>
+          <span class="panel-title gest">Gestures</span>
+          <span class="panel-count" id="gest-count">0</span>
+        </div>
+        <div class="panel-filters">
+          <select id="fg2-student"><option value="">All students</option></select>
+          <select id="fg2-type"><option value="">All gestures</option></select>
+        </div>
+        <div class="ann-list" id="gest-list"><div class="empty-st">No gestures yet.<br>Select <b style="color:var(--gest)">Gesture</b> mode and<br>drag the timeline.</div></div>
+        <div class="note-panel" id="gest-note-panel" style="display:none">
+          <label>Note</label><textarea id="gest-note" placeholder="Add a note…"></textarea>
+        </div>
+      </div>
+
+      <!-- Export bar -->
+      <div class="export-bar">
+        <div class="exp-grp">
+          <span class="exp-label" style="color:var(--gaze)">Gaze</span>
+          <button class="btn exp-btn" id="btn-gaze-json">JSON</button>
+          <button class="btn exp-btn" id="btn-gaze-csv">CSV</button>
+        </div>
+        <div class="exp-grp">
+          <span class="exp-label" style="color:var(--gest)">Gesture</span>
+          <button class="btn exp-btn" id="btn-gest-json">JSON</button>
+          <button class="btn exp-btn" id="btn-gest-csv">CSV</button>
+        </div>
+        <div class="exp-grp" style="margin-left:auto">
+          <button class="btn exp-btn" id="btn-all-json" title="Full session JSON"><i class="ti ti-download"></i> All</button>
+          <button class="btn exp-btn" id="btn-clear" style="color:var(--red);border-color:rgba(224,90,75,.2)" title="Clear all"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="sdot" id="sdot"></div>
+    <span id="smsg">Load a video to start</span>
+    <div class="kbds">
+      <kbd>Space</kbd> <kbd>J/L</kbd>±5s <kbd>←/→</kbd>frame <kbd>A</kbd>mark
+      <kbd>G</kbd>gaze <kbd>H</kbd>gesture <kbd>S</kbd>seg <kbd>P</kbd>pt <kbd>Esc</kbd> <kbd>Del</kbd>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══ Colour palette ════════════════════════════════════════════════════
+const PAL = {
+  student:['#4a9edd','#1d9e75','#9b7fe8','#d4537e','#e8c547','#e05a4b','#5dcaa5','#ba7517'],
+  task:   ['#e8c547','#ba7517','#fac775','#854f0b'],
+  device: ['#e05a4b','#c0392b','#f1948a'],
+  fixed:{
+    manipulative:'#639922', work_area:'#1d9e75', board:'#888',
+    out_of_frame:'#555',    shared_device:'#9b7fe8',
+    shared_task_material:'#b8a0e8', 'occluded/uncertain':'#e05a4b', teacher:'#d85a30'
+  }
+};
+const GEST_COLORS = {
+  write_draw:'#4a9edd', type_use_device:'#45b7d1', manipulate:'#639922',
+  mic_fidget:'#e8c547', dance:'#f0b27a', head_nod:'#82e0aa',
+  head_shake:'#e05a4b', raise_hand:'#9b7fe8', point:'#fac775',
+  laughter:'#f7dc6f',  smile:'#5dcaa5',  yawn:'#b8a0e8',
+};
+const LEAN_COLOR = '#4a9edd';
+const TOUCH_COLOR = '#d4537e';
+
+// ══ Gesture definitions ═══════════════════════════════════════════════
+const GESTURES_STATIC = [
+  {key:'write_draw',      name:'Write / Draw',      short:'Write'},
+  {key:'type_use_device', name:'Type / Use device', short:'Type'},
+  {key:'manipulate',      name:'Manipulate',        short:'Manip'},
+  {key:'mic_fidget',      name:'Mic fidget',        short:'Fidget'},
+  {key:'dance',           name:'Dance',             short:'Dance'},
+  {key:'head_nod',        name:'Head nod',          short:'Nod'},
+  {key:'head_shake',      name:'Head shake',        short:'Shake'},
+  {key:'raise_hand',      name:'Raise hand',        short:'Hand↑'},
+  {key:'point',           name:'Point',             short:'Point'},
+  {key:'laughter',        name:'Laughter',          short:'Laugh'},
+  {key:'smile',           name:'Smile',             short:'Smile'},
+  {key:'yawn',            name:'Yawn',              short:'Yawn'},
+];
+let GESTURES_DYNAMIC = []; // lean_in_N, touch_N
+function buildGesturesDynamic(studs){
+  GESTURES_DYNAMIC = [];
+  studs.forEach((s,i)=>{
+    GESTURES_DYNAMIC.push({key:`lean_in_student_${s}`, name:`Lean in → s_${s}`, short:`Lean→${s}`, color:LEAN_COLOR});
+    GESTURES_DYNAMIC.push({key:`touch_student_${s}`,   name:`Touch → s_${s}`,   short:`Touch→${s}`, color:TOUCH_COLOR});
+  });
+}
+function gestureColor(key){
+  if(GEST_COLORS[key]) return GEST_COLORS[key];
+  if(key.startsWith('lean_in')) return LEAN_COLOR;
+  if(key.startsWith('touch'))   return TOUCH_COLOR;
+  return '#888';
+}
+function gestureShort(key){
+  const s=GESTURES_STATIC.find(g=>g.key===key);
+  if(s) return s.short;
+  const d=GESTURES_DYNAMIC.find(g=>g.key===key);
+  return d?d.short:key;
+}
+function gestureName(key){
+  const s=GESTURES_STATIC.find(g=>g.key===key);
+  if(s) return s.name;
+  const d=GESTURES_DYNAMIC.find(g=>g.key===key);
+  return d?d.name:key;
+}
+
+// ══ Gaze target list ══════════════════════════════════════════════════
+let targets=[];
+function buildTargets(studs){
+  const out=[];
+  studs.forEach((s,i)=>{
+    out.push({key:`student_${s}`,         name:`student_${s}`,         color:PAL.student[i%PAL.student.length], group:'Students',      short:`s_${s}`});
+    out.push({key:`task_material_${s}`,   name:`task_material_${s}`,   color:PAL.task[i%PAL.task.length],       group:'Task material', short:`task_${s}`});
+    out.push({key:`device_${s}`,          name:`device_${s}`,          color:PAL.device[i%PAL.device.length],   group:'Devices',       short:`dev_${s}`});
+  });
+  [{key:'manipulative',color:PAL.fixed.manipulative,group:'Shared'},
+   {key:'work_area',color:PAL.fixed.work_area,group:'Shared'},
+   {key:'board',color:PAL.fixed.board,group:'Shared'},
+   {key:'out_of_frame',color:PAL.fixed.out_of_frame,group:'Shared'},
+   {key:'shared_device',color:PAL.fixed.shared_device,group:'Shared'},
+   {key:'shared_task_material',color:PAL.fixed.shared_task_material,group:'Shared'},
+   {key:'occluded/uncertain',name:'occluded/uncertain',color:PAL.fixed['occluded/uncertain'],group:'Quality'},
+   {key:'teacher',color:PAL.fixed.teacher,group:'Other'},
+  ].forEach(f=>out.push({name:f.key,...f,short:f.key.replace(/_/g,' ').slice(0,8)}));
+  return out;
+}
+
+// ══ State ════════════════════════════════════════════════════════════
+let sessionName='', students=[], gazeAnns=[], gestureAnns=[];
+let selectedGaze=null, selectedGest=null;
+let annMode='gaze';   // 'gaze'|'gesture'
+let segMode=true;     // true=segment, false=point
+let dur=0, gId=0, gestId=0;
+let segStart=null, segEnd=null;
+const FPS=30;
+
+// Timeline drag
+let tlDrag=false, tlDragT0=null, tlDragX=0, tlDragWasPlaying=false, lastScrubT=-1;
+let tlHover=false, tlMouseX=0, tlHoverT=0;
+let rafId=null;
+
+// Seek drag
+let seekDrag=false;
+
+// ══ DOM refs ══════════════════════════════════════════════════════════
+const video   = document.getElementById('video');
+const tl      = document.getElementById('tl');
+const ctx     = tl.getContext('2d');
+const tlScrl  = document.getElementById('tl-scroll');
+const seekBar = document.getElementById('seekbar');
+const sdot    = document.getElementById('sdot');
+const smsg    = document.getElementById('smsg');
+const gazePopup = document.getElementById('gaze-popup');
+const gestPopup = document.getElementById('gest-popup');
+
+// ══ Helpers ══════════════════════════════════════════════════════════
+const fmt=t=>t.toFixed(3);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const setStatus=m=>smsg.textContent=m;
+function dl(name,content,mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function studentColor(s){const i=students.indexOf(s);return PAL.student[Math.max(0,i)%PAL.student.length];}
+function posPopup(el,px,py,w=300,h=310){
+  let x=px+14, y=py+14;
+  if(x+w>window.innerWidth-10) x=px-w-14;
+  if(y+h>window.innerHeight-10) y=py-h-14;
+  el.style.left=Math.max(8,x)+'px'; el.style.top=Math.max(8,y)+'px';
+}
+
+// ══ Setup modal ═══════════════════════════════════════════════════════
+let setupStudents=['1','2','3'], setupVideoFile=null;
+
+function renderSetupStudents(){
+  const el=document.getElementById('s-student-list'); el.innerHTML='';
+  setupStudents.forEach((s,i)=>{
+    const r=document.createElement('div'); r.className='s-entry';
+    r.innerHTML=`<span class="s-num">S${i+1}</span>
+      <input class="field" type="text" value="${esc(s)}" placeholder="ID" style="padding:5px 8px">
+      <button class="del-btn">×</button>`;
+    r.querySelector('input').addEventListener('input',e=>{setupStudents[i]=e.target.value.trim();});
+    r.querySelector('.del-btn').addEventListener('click',()=>{setupStudents.splice(i,1);renderSetupStudents();});
+    el.appendChild(r);
+  });
+}
+renderSetupStudents();
+
+// Step 1: video
+const setupDropzone=document.getElementById('setup-dropzone');
+setupDropzone.addEventListener('click',()=>document.getElementById('setup-video-upload').click());
+setupDropzone.addEventListener('dragover',e=>{e.preventDefault();setupDropzone.style.borderColor='var(--acc)';});
+setupDropzone.addEventListener('dragleave',()=>{setupDropzone.style.borderColor='';});
+setupDropzone.addEventListener('drop',e=>{
+  e.preventDefault();setupDropzone.style.borderColor='';
+  const f=Array.from(e.dataTransfer.files).find(f=>f.type.startsWith('video/'));
+  if(f) loadSetupVideo(f);
+});
+document.getElementById('setup-video-upload').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(f) loadSetupVideo(f);
+});
+function loadSetupVideo(file){
+  setupVideoFile=file;
+  const pv=document.getElementById('setup-preview-video');
+  pv.src=URL.createObjectURL(file);
+  pv.onloadedmetadata=()=>{
+    const m=Math.floor(pv.duration/60), s=(pv.duration%60).toFixed(1);
+    document.getElementById('setup-video-info').textContent=`${file.name}  ·  ${m>0?m+'m ':''}${s}s`;
+    setupDropzone.style.display='none';
+    document.getElementById('setup-preview-wrap').style.display='block';
+    document.getElementById('s-next').disabled=false;
+    const base=file.name.replace(/\.[^.]+$/,'');
+    if(!document.getElementById('s-name').value) document.getElementById('s-name').value=base;
+  };
+}
+document.getElementById('setup-change').addEventListener('click',()=>{
+  document.getElementById('setup-preview-video').src='';
+  document.getElementById('setup-preview-wrap').style.display='none';
+  setupDropzone.style.display='block';
+  document.getElementById('s-next').disabled=true;
+  setupVideoFile=null;
+});
+
+// Step transitions
+function goStep2(){
+  document.getElementById('step1').style.display='none';
+  document.getElementById('step2').style.display='block';
+  document.getElementById('si2').style.opacity='1';
+  document.getElementById('sn2').style.cssText+='background:var(--acc);color:#000;';
+  document.getElementById('sl2').style.color='var(--acc)';
+  document.getElementById('si1').style.opacity='.4';
+  renderSetupStudents();
+}
+function goStep1(){
+  document.getElementById('step2').style.display='none';
+  document.getElementById('step1').style.display='block';
+  document.getElementById('si1').style.opacity='1';
+  document.getElementById('si2').style.opacity='.3';
+  document.getElementById('sn2').style.cssText='width:20px;height:20px;border-radius:50%;background:var(--line2);color:var(--tx2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0';
+  document.getElementById('sl2').style.color='var(--tx2)';
+}
+document.getElementById('s-next').addEventListener('click',goStep2);
+document.getElementById('s-back').addEventListener('click',goStep1);
+document.getElementById('s-gen').addEventListener('click',()=>{
+  const n=parseInt(document.getElementById('s-count').value)||3;
+  setupStudents=Array.from({length:n},(_,i)=>String(i+1));
+  renderSetupStudents();
+});
+document.getElementById('s-add').addEventListener('click',()=>{
+  setupStudents.push(String(setupStudents.length+1)); renderSetupStudents();
+});
+
+// Start
+function startSession(keepVideo=false){
+  const valid=setupStudents.filter(s=>s.trim());
+  if(!valid.length){alert('Add at least one student.');return;}
+  sessionName=document.getElementById('s-name').value.trim()||'session';
+  segMode=document.querySelector('input[name="s-mode"]:checked').value==='segment';
+  students=valid;
+  targets=buildTargets(students);
+  buildGesturesDynamic(students);
+  document.getElementById('sess-badge').textContent=sessionName;
+  document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('app').style.display='flex';
+  applySegMode();
+  applyAnnMode();
+  populateGazeFilters();
+  populateGestFilters();
+  resizeTL();
+  renderGazeList();
+  renderGestList();
+  if(!keepVideo && setupVideoFile){loadVideo(setupVideoFile);setupVideoFile=null;}
+}
+document.getElementById('s-start').addEventListener('click',()=>startSession(false));
+
+// Edit session
+document.getElementById('btn-edit-session').addEventListener('click',openEditSession);
+function openEditSession(){
+  setupStudents=students.slice();
+  document.getElementById('s-name').value=sessionName;
+  renderSetupStudents();
+  goStep2();
+  document.getElementById('setup-overlay').classList.remove('hidden');
+  document.getElementById('app').style.display='none';
+  document.getElementById('s-start').onclick=()=>{
+    startSession(true);
+    document.getElementById('s-start').onclick=null;
+    document.getElementById('s-start').addEventListener('click',()=>startSession(false));
+  };
+}
+
+// ══ Video ════════════════════════════════════════════════════════════
+function loadVideo(file){
+  video.src=URL.createObjectURL(file);
+  setStatus(`Loading ${file.name}…`);
+}
+document.getElementById('v-upload').addEventListener('change',e=>{const f=e.target.files[0];if(f)loadVideo(f);});
+const varea=document.getElementById('varea');
+varea.addEventListener('dragover',e=>e.preventDefault());
+varea.addEventListener('drop',e=>{e.preventDefault();const f=Array.from(e.dataTransfer.files).find(f=>f.type.startsWith('video/'));if(f)loadVideo(f);});
+
+video.addEventListener('loadedmetadata',()=>{
+  dur=video.duration;
+  video.style.display='block';
+  document.getElementById('vph').style.display='none';
+  document.getElementById('t-dur').textContent=fmt(dur);
+  resizeTL();
+  setStatus('Video loaded — drag timeline to annotate');
+});
+video.addEventListener('timeupdate',()=>{
+  const pct=dur?video.currentTime/dur*100:0;
+  document.getElementById('seek-fill').style.width=pct+'%';
+  document.getElementById('seek-thumb').style.left=pct+'%';
+  document.getElementById('t-cur').textContent=fmt(video.currentTime);
+  if(!tlDrag) renderTL();
+});
+video.addEventListener('play',()=>{
+  document.getElementById('tb-play').innerHTML='<i class="ti ti-player-pause"></i>';
+  sdot.classList.add('playing');
+});
+video.addEventListener('pause',()=>{
+  document.getElementById('tb-play').innerHTML='<i class="ti ti-player-play"></i>';
+  sdot.classList.remove('playing');
+});
+
+// Transport
+document.getElementById('tb-play').addEventListener('click',()=>video.paused?video.play():video.pause());
+document.getElementById('tb-b1').addEventListener('click',()=>{video.currentTime=Math.max(0,video.currentTime-1/FPS);});
+document.getElementById('tb-f1').addEventListener('click',()=>{video.currentTime=Math.min(dur,video.currentTime+1/FPS);});
+document.getElementById('tb-b5').addEventListener('click',()=>{video.currentTime=Math.max(0,video.currentTime-5);});
+document.getElementById('tb-f5').addEventListener('click',()=>{video.currentTime=Math.min(dur,video.currentTime+5);});
+document.getElementById('speed').addEventListener('change',e=>{video.playbackRate=parseFloat(e.target.value);});
+
+// Seekbar
+function seekTo(e){
+  if(!dur)return;
+  const r=seekBar.getBoundingClientRect();
+  video.currentTime=Math.max(0,Math.min(dur,((e.clientX-r.left)/r.width)*dur));
+}
+seekBar.addEventListener('mousedown',e=>{seekDrag=true;seekTo(e);});
+document.addEventListener('mousemove',e=>{if(seekDrag)seekTo(e);});
+document.addEventListener('mouseup',()=>{seekDrag=false;});
+
+function updateSegHL(){
+  const hl=document.getElementById('seg-hl');
+  const ts=document.getElementById('t-seg');
+  if(segStart!==null&&dur){
+    const en=segEnd!==null?segEnd:video.currentTime;
+    const a=Math.min(segStart,en)/dur*100, b=Math.abs(en-segStart)/dur*100;
+    hl.style.cssText=`left:${a}%;width:${b}%;background:rgba(232,197,71,.3);display:block;`;
+    ts.style.display='block';
+    ts.textContent=segEnd!==null?`${fmt(segStart)}–${fmt(segEnd)}s`:`${fmt(segStart)}→`;
+  } else {
+    hl.style.display='none';
+    ts.style.display='none';
+  }
+}
+
+// ══ Ann mode & seg mode ═══════════════════════════════════════════════
+function applyAnnMode(){
+  const pg=document.getElementById('pill-gaze'), ph=document.getElementById('pill-gest');
+  pg.className=annMode==='gaze'?'on-gaze':'';
+  ph.className=annMode==='gesture'?'on-gest':'';
+  const badge=document.getElementById('tl-mode-badge');
+  if(badge){badge.className='tl-mode '+(annMode==='gaze'?'gaze':'gest');badge.textContent=annMode==='gaze'?'Gaze':'Gesture';}
+  setStatus(annMode==='gaze'?'Gaze mode — drag timeline to annotate':'Gesture mode — drag timeline to annotate');
+}
+function applySegMode(){
+  const ps=document.getElementById('pill-seg'), pp=document.getElementById('pill-pt');
+  ps.className=segMode?'on-acc':'';
+  pp.className=!segMode?'on-acc':'';
+}
+document.getElementById('pill-gaze').addEventListener('click',()=>{annMode='gaze';applyAnnMode();applySegMode();});
+document.getElementById('pill-gest').addEventListener('click',()=>{annMode='gesture';applyAnnMode();applySegMode();});
+document.getElementById('pill-seg').addEventListener('click',()=>{segMode=true;applySegMode();});
+document.getElementById('pill-pt').addEventListener('click',()=>{segMode=false;applySegMode();});
+
+// ══ Timeline ══════════════════════════════════════════════════════════
+const LANE=24, RULER=26, LPAD=6, RPAD=6;
+const SEC_HDR=16; // height of section header row (GAZE / GESTURE label)
+const GAZE_COL='rgba(74,158,221,0.05)';
+const GEST_COL='rgba(155,127,232,0.05)';
+
+function resizeTL(){
+  const w=tlScrl.offsetWidth||700;
+  if(!w)return;
+  // height = ruler + gaze header + gaze lanes + gesture header + gesture lanes
+  const h=RULER + SEC_HDR + students.length*LANE + SEC_HDR + students.length*LANE;
+  tl.width=w; tl.height=Math.max(h, RULER+SEC_HDR*2+4);
+  renderTL();
+}
+
+function tToX(t){return LPAD+(t/dur)*(tl.width-LPAD-RPAD);}
+function xToT(x){return Math.max(0,Math.min(dur,((x-LPAD)/(tl.width-LPAD-RPAD))*dur));}
+
+function renderTL(){
+  if(!tl.width)return;
+  const W=tl.width, H=tl.height;
+  ctx.clearRect(0,0,W,H);
+  const bd='rgba(255,255,255,0.06)', tx2='#7a7672';
+
+  // ── Ruler ──
+  ctx.fillStyle='#1a1a1a'; ctx.fillRect(0,0,W,RULER);
+  if(dur>0){
+    const ticks=[.1,.5,1,2,5,10,15,30,60,120];
+    const ti=ticks.find(iv=>(iv/dur)*(W-LPAD-RPAD)>=38)||60;
+    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=.5;
+    ctx.fillStyle=tx2; ctx.font='10px IBM Plex Mono,monospace'; ctx.textAlign='center';
+    for(let t=0;t<=dur+.001;t+=ti){
+      const ts=Math.min(t,dur), x=tToX(ts);
+      ctx.beginPath(); ctx.moveTo(x,RULER-5); ctx.lineTo(x,RULER); ctx.stroke();
+      ctx.fillText((ts<10?ts.toFixed(1):ts.toFixed(0))+'s', x, RULER-7);
+    }
+  }
+  ctx.strokeStyle=bd; ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(0,RULER); ctx.lineTo(W,RULER); ctx.stroke();
+
+  // Layout Y positions
+  const gazeHdrY   = RULER;
+  const gazeStartY  = gazeHdrY + SEC_HDR;
+  const gazeEndY    = gazeStartY + students.length*LANE;
+  const gestHdrY    = gazeEndY;
+  const gestStartY  = gestHdrY + SEC_HDR;
+
+  // ── GAZE section header row ──
+  ctx.fillStyle='rgba(74,158,221,0.08)'; ctx.fillRect(0,gazeHdrY,W,SEC_HDR);
+  ctx.fillStyle='rgba(74,158,221,0.75)';
+  ctx.font='bold 9px IBM Plex Sans,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('GAZE', 8, gazeHdrY+SEC_HDR/2+4);
+  ctx.strokeStyle=bd; ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(0,gazeHdrY+SEC_HDR); ctx.lineTo(W,gazeHdrY+SEC_HDR); ctx.stroke();
+
+  // ── Gaze lanes ──
+  ctx.fillStyle=GAZE_COL; ctx.fillRect(0,gazeStartY,W,students.length*LANE);
+  students.forEach((s,i)=>{
+    const y=gazeStartY+i*LANE;
+    if(i%2===1){ctx.fillStyle='rgba(255,255,255,0.02)';ctx.fillRect(0,y,W,LANE);}
+    ctx.strokeStyle=bd; ctx.lineWidth=.5;
+    ctx.beginPath(); ctx.moveTo(0,y+LANE); ctx.lineTo(W,y+LANE); ctx.stroke();
+    ctx.fillStyle=studentColor(s); ctx.fillRect(4,y+LANE/2-4,5,8);
+    ctx.fillStyle=tx2; ctx.font='10px IBM Plex Sans,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(`s_${s}`, 13, y+LANE/2+4);
+  });
+
+  // ── Divider between gaze and gesture ──
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,gazeEndY); ctx.lineTo(W,gazeEndY); ctx.stroke();
+
+  // ── GESTURE section header row ──
+  ctx.fillStyle='rgba(155,127,232,0.08)'; ctx.fillRect(0,gestHdrY,W,SEC_HDR);
+  ctx.fillStyle='rgba(155,127,232,0.75)';
+  ctx.font='bold 9px IBM Plex Sans,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('GESTURE', 8, gestHdrY+SEC_HDR/2+4);
+  ctx.strokeStyle=bd; ctx.lineWidth=.5;
+  ctx.beginPath(); ctx.moveTo(0,gestHdrY+SEC_HDR); ctx.lineTo(W,gestHdrY+SEC_HDR); ctx.stroke();
+
+  // ── Gesture lanes ──
+  ctx.fillStyle=GEST_COL; ctx.fillRect(0,gestStartY,W,students.length*LANE);
+  students.forEach((s,i)=>{
+    const y=gestStartY+i*LANE;
+    if(i%2===1){ctx.fillStyle='rgba(255,255,255,0.02)';ctx.fillRect(0,y,W,LANE);}
+    ctx.strokeStyle=bd; ctx.lineWidth=.5;
+    ctx.beginPath(); ctx.moveTo(0,y+LANE); ctx.lineTo(W,y+LANE); ctx.stroke();
+    ctx.fillStyle='rgba(155,127,232,0.7)'; ctx.fillRect(4,y+LANE/2-4,5,8);
+    ctx.fillStyle='rgba(155,127,232,0.65)'; ctx.font='10px IBM Plex Sans,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(`s_${s}`, 13, y+LANE/2+4);
+  });
+
+  // ── Draw gaze annotations ──
+  gazeAnns.forEach(ann=>{
+    const li=students.indexOf(ann.gazer); if(li===-1)return;
+    const y=gazeStartY+li*LANE, x1=tToX(ann.start);
+    const x2=ann.end!==null?tToX(ann.end):x1;
+    const isSel=ann.id===selectedGaze;
+    ctx.globalAlpha=isSel?1:.78;
+    if(ann.end!==null&&x2-x1>3){
+      ctx.fillStyle=ann.targetColor; ctx.fillRect(x1,y+4,x2-x1,LANE-8);
+      if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.strokeRect(x1,y+4,x2-x1,LANE-8);}
+      if(x2-x1>36){ctx.fillStyle='rgba(0,0,0,0.7)';ctx.font='9px IBM Plex Sans,sans-serif';ctx.textAlign='left';ctx.fillText(ann.targetShort||ann.targetKey.slice(0,10),x1+3,y+LANE/2+3);}
+    } else {
+      ctx.fillStyle=ann.targetColor;
+      ctx.beginPath();ctx.arc(x1,y+LANE/2,isSel?6:4,0,Math.PI*2);ctx.fill();
+      if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
+    }
+    ctx.globalAlpha=1;
+  });
+
+  // ── Draw gesture annotations ──
+  gestureAnns.forEach(ann=>{
+    const li=students.indexOf(ann.student); if(li===-1)return;
+    const y=gestStartY+li*LANE, x1=tToX(ann.start);
+    const x2=ann.end!==null?tToX(ann.end):x1;
+    const isSel=ann.id===selectedGest;
+    const gc=gestureColor(ann.gestureKey);
+    ctx.globalAlpha=isSel?1:.75;
+    if(ann.end!==null&&x2-x1>3){
+      ctx.fillStyle=gc; ctx.fillRect(x1,y+4,x2-x1,LANE-8);
+      if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.strokeRect(x1,y+4,x2-x1,LANE-8);}
+      if(x2-x1>32){ctx.fillStyle='rgba(0,0,0,0.65)';ctx.font='9px IBM Plex Sans,sans-serif';ctx.textAlign='left';ctx.fillText(gestureShort(ann.gestureKey),x1+3,y+LANE/2+3);}
+    } else {
+      ctx.fillStyle=gc;
+      ctx.beginPath();ctx.arc(x1,y+LANE/2,isSel?6:4,0,Math.PI*2);ctx.fill();
+      if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
+    }
+    ctx.globalAlpha=1;
+  });
+
+  // ── Segment highlight region ──
+  if(segStart!==null&&dur>0){
+    const sE=segEnd!==null?segEnd:video.currentTime;
+    const x1=tToX(Math.min(segStart,sE)), x2=tToX(Math.max(segStart,sE));
+    const H2=students.length*LANE;
+    const yOff=annMode==='gaze'?gazeStartY:gestStartY;
+    ctx.fillStyle='rgba(232,197,71,0.12)'; ctx.fillRect(x1,yOff,x2-x1,H2);
+    ctx.strokeStyle='rgba(232,197,71,0.7)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(tToX(segStart),RULER);ctx.lineTo(tToX(segStart),H);ctx.stroke();
+    if(segEnd!==null){
+      ctx.beginPath();ctx.moveTo(tToX(segEnd),RULER);ctx.lineTo(tToX(segEnd),H);ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.font='bold 9px IBM Plex Mono,monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(232,197,71,0.9)';
+    ctx.fillText(fmt(segStart)+'s', tToX(segStart), RULER-7);
+    if(segEnd!==null) ctx.fillText(fmt(segEnd)+'s', tToX(segEnd), RULER-7);
+  }
+
+  // Scrub head during drag (yellow, at cursor)
+  if(tlDrag&&segEnd!==null&&dur>0){
+    const sx=tToX(segEnd);
+    ctx.strokeStyle='rgba(232,197,71,0.85)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,H); ctx.stroke();
+    ctx.fillStyle='#e8c547';
+    ctx.beginPath(); ctx.moveTo(sx-5,0); ctx.lineTo(sx+5,0); ctx.lineTo(sx,8); ctx.closePath(); ctx.fill();
+    ctx.font='bold 9px IBM Plex Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText(fmt(segEnd)+'s',sx,RULER-7);
+  }
+
+  // Hover ghost
+  if(tlHover&&!tlDrag&&dur>0){
+    ctx.strokeStyle='rgba(255,255,255,0.13)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(tlMouseX,RULER); ctx.lineTo(tlMouseX,H); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,0.45)';
+    ctx.fillText(fmt(tlHoverT)+'s',tlMouseX,RULER-7);
+  }
+
+  // Playhead
+  if(dur>0){
+    const cx=tToX(video.currentTime);
+    ctx.strokeStyle='#e05a4b'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+    ctx.fillStyle='#e05a4b';
+    ctx.beginPath(); ctx.moveTo(cx-5,0); ctx.lineTo(cx+5,0); ctx.lineTo(cx,8); ctx.closePath(); ctx.fill();
+  }
+}
+
+// rAF loop
+function startRaf(){if(!rafId)rafId=requestAnimationFrame(rafLoop);}
+function rafLoop(){renderTL();updateSegHL();if(tlDrag||tlHover)rafId=requestAnimationFrame(rafLoop);else rafId=null;}
+
+// Timeline mouse
+tl.addEventListener('mousemove',e=>{
+  const r=tl.getBoundingClientRect();
+  tlMouseX=e.clientX-r.left; tlHoverT=dur?xToT(tlMouseX):0;
+});
+tl.addEventListener('mouseenter',()=>{tlHover=true;startRaf();});
+tl.addEventListener('mouseleave',()=>{tlHover=false;if(!tlDrag)renderTL();});
+
+tl.addEventListener('mousedown',e=>{
+  if(!dur)return;
+  e.preventDefault();
+  const r=tl.getBoundingClientRect();
+  const x=e.clientX-r.left, t=xToT(x);
+  if(segMode){
+    segStart=t; segEnd=null;
+    tlDragT0=t; tlDrag=true; lastScrubT=t;
+    tlDragWasPlaying=!video.paused;
+    if(tlDragWasPlaying) video.pause();
+    sdot.classList.add('seg');
+    tl.style.cursor='col-resize';
+    startRaf();
+  } else {
+    video.currentTime=t;
+  }
+});
+window.addEventListener('mousemove',e=>{
+  if(!tlDrag)return;
+  const r=tl.getBoundingClientRect();
+  const x=Math.max(LPAD,Math.min(tl.width-RPAD,e.clientX-r.left));
+  const t=xToT(x);
+  tlMouseX=x; segEnd=t;
+  if(Math.abs(t-lastScrubT)>1/FPS){video.currentTime=t;lastScrubT=t;}
+});
+window.addEventListener('mouseup',e=>{
+  if(!tlDrag)return;
+  tlDrag=false; sdot.classList.remove('seg'); tl.style.cursor='crosshair';
+  const r=tl.getBoundingClientRect();
+  const upX=Math.max(LPAD,Math.min(tl.width-RPAD,e.clientX-r.left));
+  const endT=xToT(upX);
+  const dragPx=Math.abs(upX-tToX(segStart));
+  if(dragPx<4){
+    // short click → point
+    segStart=null; segEnd=null;
+    video.currentTime=endT;
+    if(tlDragWasPlaying) video.play();
+    openPopup(endT,null,e.clientX,e.clientY);
+  } else {
+    const s=Math.min(segStart,endT), en=Math.max(segStart,endT);
+    segStart=s; segEnd=en; video.currentTime=s;
+    updateSegHL(); renderTL();
+    openPopup(s,en,e.clientX,e.clientY);
+  }
+});
+tl.addEventListener('dblclick',e=>{
+  if(!dur)return;
+  const r=tl.getBoundingClientRect();
+  video.currentTime=xToT(e.clientX-r.left);
+  closePopups();
+});
+
+// ══ Popup dispatch ════════════════════════════════════════════════════
+function openPopup(start,end,px,py){
+  if(annMode==='gaze') openGazePopup(start,end,px,py);
+  else openGesturePopup(start,end,px,py);
+}
+function closePopups(){
+  gazePopup.style.display='none';
+  gestPopup.style.display='none';
+  segStart=null; segEnd=null; tlDrag=false;
+  updateSegHL(); renderTL();
+  sdot.classList.remove('seg');
+  if(tlDragWasPlaying){video.play();tlDragWasPlaying=false;}
+}
+
+// ══ Shared quick-pick builder ══════════════════════════════════════════
+/**
+ * Builds a quick-pick grid in `gridEl`.
+ * items: [{key, name, color}]
+ * onSelect(key) called when an item is picked.
+ * Returns a function selectByKey(key) to programmatically select.
+ */
+function buildQuickPick(gridEl, items, onSelect){
+  gridEl.innerHTML='';
+  const cells=[];
+
+  function selectKey(key){
+    cells.forEach(({el,item})=>{
+      const isSel=item.key===key;
+      el.classList.toggle('qk-selected', isSel);
+      el.classList.toggle('qk-dim', key!==null && !isSel);
+      if(isSel){
+        el.style.background=item.color+'cc';
+        el.style.borderColor=item.color;
+      } else {
+        el.style.background='';
+        el.style.borderColor=item.color+'44';
+      }
+    });
+  }
+
+  items.forEach((item,i)=>{
+    const el=document.createElement('div');
+    el.className='qk';
+    el.style.borderColor=item.color+'44';
+    el.innerHTML=`
+      <div class="qk-dot" style="background:${item.color}"></div>
+      <span class="qk-label" title="${esc(item.name)}">${esc(item.name)}</span>
+      <span class="qk-num">${i<9?i+1:''}</span>
+      <span class="qk-check">✓</span>
+    `;
+    el.addEventListener('click',()=>{
+      // Once selected, stays selected — clicking again does nothing
+      if(el.classList.contains('qk-selected')) return;
+      selectKey(item.key);
+      onSelect(item.key);
+    });
+    gridEl.appendChild(el);
+    cells.push({el,item});
+  });
+
+  return {
+    selectKey,
+    selectByIndex(i){ if(items[i]) selectKey(items[i].key), onSelect(items[i].key); },
+    clear(){ selectKey(null); cells.forEach(({el,item})=>{ el.style.background=''; el.style.borderColor=item.color+'44'; }); }
+  };
+}
+
+// ══ Gaze popup ═══════════════════════════════════════════════════════
+let pendingGaze=null, gpSelectedTarget=null, gazeQK=null;
+
+function openGazePopup(start,end,px,py){
+  pendingGaze={start,end};
+  gpSelectedTarget=null;
+  document.getElementById('gp-time').textContent=end?`${fmt(start)}–${fmt(end)}s`:`${fmt(start)}s`;
+
+  // Gazer select
+  const gs=document.getElementById('gp-gazer'); gs.innerHTML='';
+  students.forEach(s=>{gs.appendChild(new Option(`student_${s}`,s));});
+
+  // Quick-pick: student faces + key shared targets
+  const qt=[
+    ...targets.filter(t=>t.key.startsWith('student_')).slice(0,students.length),
+    ...targets.filter(t=>['manipulative','work_area','out_of_frame','shared_device','occluded/uncertain','teacher'].includes(t.key))
+  ].slice(0,8);
+
+  const qkEl=document.getElementById('gp-quick');
+  gazeQK=buildQuickPick(qkEl, qt, key=>{
+    gpSelectedTarget=key;
+    document.getElementById('gp-target').value=key;
+  });
+
+  // Full dropdown
+  const td=document.getElementById('gp-target'); td.innerHTML='';
+  const grps={};
+  targets.forEach(t=>{(grps[t.group]=grps[t.group]||[]).push(t);});
+  Object.entries(grps).forEach(([g,items])=>{
+    const og=document.createElement('optgroup'); og.label=g;
+    items.forEach(t=>og.appendChild(new Option(t.name,t.key)));
+    td.appendChild(og);
+  });
+  td.addEventListener('change',()=>{
+    gpSelectedTarget=td.value;
+    // Sync quick-pick highlight
+    const match=qt.find(t=>t.key===td.value);
+    if(match) gazeQK.selectKey(td.value);
+    else gazeQK.clear();
+  });
+
+  document.getElementById('gp-note').value='';
+  gazePopup.style.display='block';
+  posPopup(gazePopup,px,py,310,360);
+  setTimeout(()=>gs.focus(),40);
+}
+
+document.getElementById('gp-cancel').addEventListener('click',closePopups);
+document.getElementById('gp-save').addEventListener('click',saveGaze);
+function saveGaze(){
+  if(!pendingGaze)return;
+  const gazer=document.getElementById('gp-gazer').value;
+  const targetKey=gpSelectedTarget||document.getElementById('gp-target').value;
+  const note=document.getElementById('gp-note').value.trim();
+  const tgt=targets.find(t=>t.key===targetKey);
+  if(!tgt){closePopups();return;}
+  gazeAnns.push({id:gId++,gazer,gazerColor:studentColor(gazer),targetKey,targetName:tgt.name,targetShort:tgt.short,targetColor:tgt.color,start:pendingGaze.start,end:pendingGaze.end,note,createdAt:new Date().toISOString()});
+  selectedGaze=gazeAnns[gazeAnns.length-1].id;
+  closePopups();
+  renderGazeList();renderTL();
+  setStatus(`✓ student_${gazer} → ${tgt.name}`);
+}
+
+// ══ Gesture popup ════════════════════════════════════════════════════
+let pendingGest=null, gp2SelectedType=null, gestQK=null;
+
+function openGesturePopup(start,end,px,py){
+  pendingGest={start,end};
+  gp2SelectedType=null;
+  document.getElementById('gp2-time').textContent=end?`${fmt(start)}–${fmt(end)}s`:`${fmt(start)}s`;
+
+  // Student select
+  const gs=document.getElementById('gp2-student'); gs.innerHTML='';
+  students.forEach(s=>{gs.appendChild(new Option(`student_${s}`,s));});
+
+  // Quick-pick: all 12 static gestures (2-col grid = 6 rows, very readable)
+  const qt=GESTURES_STATIC.map(g=>({key:g.key, name:g.name, color:gestureColor(g.key)}));
+
+  const qkEl=document.getElementById('gp2-quick');
+  gestQK=buildQuickPick(qkEl, qt, key=>{
+    gp2SelectedType=key;
+    document.getElementById('gp2-type').value=key;
+  });
+
+  // Full dropdown (static + dynamic)
+  const td=document.getElementById('gp2-type'); td.innerHTML='';
+  const og1=document.createElement('optgroup'); og1.label='Actions';
+  GESTURES_STATIC.forEach(g=>og1.appendChild(new Option(g.name,g.key)));
+  td.appendChild(og1);
+  if(GESTURES_DYNAMIC.length){
+    const og2=document.createElement('optgroup'); og2.label='Social (directed)';
+    GESTURES_DYNAMIC.forEach(g=>og2.appendChild(new Option(g.name,g.key)));
+    td.appendChild(og2);
+  }
+  td.addEventListener('change',()=>{
+    gp2SelectedType=td.value;
+    const match=qt.find(g=>g.key===td.value);
+    if(match) gestQK.selectKey(td.value);
+    else gestQK.clear();
+  });
+
+  document.getElementById('gp2-note').value='';
+  gestPopup.style.display='block';
+  posPopup(gestPopup,px,py,310,420);
+  setTimeout(()=>gs.focus(),40);
+}
+
+document.getElementById('gp2-cancel').addEventListener('click',closePopups);
+document.getElementById('gp2-save').addEventListener('click',saveGesture);
+function saveGesture(){
+  if(!pendingGest)return;
+  const student=document.getElementById('gp2-student').value;
+  const gKey=gp2SelectedType||document.getElementById('gp2-type').value;
+  const note=document.getElementById('gp2-note').value.trim();
+  gestureAnns.push({id:gestId++,student,studentColor:studentColor(student),gestureKey:gKey,gestureName:gestureName(gKey),gestureColor:gestureColor(gKey),start:pendingGest.start,end:pendingGest.end,note,createdAt:new Date().toISOString()});
+  selectedGest=gestureAnns[gestureAnns.length-1].id;
+  closePopups();
+  renderGestList();renderTL();
+  setStatus(`✓ student_${student}: ${gestureName(gKey)}`);
+}
+
+// ══ Gaze list ═════════════════════════════════════════════════════════
+function renderGazeList(){
+  const fgz=document.getElementById('fg-gazer').value;
+  const ftg=document.getElementById('fg-target').value;
+  let anns=gazeAnns.filter(a=>(!fgz||a.gazer===fgz)&&(!ftg||a.targetKey===ftg));
+  document.getElementById('gaze-count').textContent=`${anns.length}${anns.length<gazeAnns.length?'/'+gazeAnns.length:''}`;
+  const el=document.getElementById('gaze-list');
+  if(!anns.length){el.innerHTML=`<div class="empty-st">${gazeAnns.length?'No matches.':'No gaze events yet.<br>Switch to Gaze mode<br>and drag the timeline.'}</div>`;document.getElementById('gaze-note-panel').style.display='none';return;}
+  anns=anns.sort((a,b)=>a.start-b.start);
+  el.innerHTML='';
+  anns.forEach(ann=>{
+    const d=document.createElement('div');
+    d.className='ann-item'+(ann.id===selectedGaze?' sel-gaze':'');
+    const rng=ann.end?`${fmt(ann.start)}–${fmt(ann.end)}s`:`${fmt(ann.start)}s`;
+    d.innerHTML=`
+      <div class="ann-top">
+        <div class="adot" style="background:${ann.gazerColor}"></div>
+        <span class="ann-who">s_${esc(ann.gazer)}</span>
+        <span class="ann-arr">→</span>
+        <div class="adot" style="background:${ann.targetColor}"></div>
+        <span class="ann-what" title="${esc(ann.targetName)}">${esc(ann.targetShort||ann.targetName)}</span>
+      </div>
+      <div class="ann-bot">
+        <span class="ann-time">${rng}</span>
+        ${ann.note?`<span class="ann-note-txt">${esc(ann.note)}</span>`:''}
+        <button class="adel" data-id="${ann.id}">×</button>
+      </div>`;
+    d.addEventListener('click',e=>{
+      if(e.target.classList.contains('adel'))return;
+      selectedGaze=ann.id; video.currentTime=ann.start;
+      renderGazeList();renderTL();showGazeNote(ann);
+    });
+    d.querySelector('.adel').addEventListener('click',e=>{
+      e.stopPropagation();
+      gazeAnns=gazeAnns.filter(a=>a.id!==ann.id);
+      if(selectedGaze===ann.id){selectedGaze=null;document.getElementById('gaze-note-panel').style.display='none';}
+      renderGazeList();renderTL();
+    });
+    el.appendChild(d);
+  });
+  if(selectedGaze!==null){const a=gazeAnns.find(x=>x.id===selectedGaze);if(a)showGazeNote(a);}
+}
+function showGazeNote(ann){
+  const p=document.getElementById('gaze-note-panel'),n=document.getElementById('gaze-note');
+  p.style.display='block'; n.value=ann.note||'';
+  n.oninput=()=>{ann.note=n.value;renderGazeList();};
+}
+function populateGazeFilters(){
+  const fg=document.getElementById('fg-gazer'),ft=document.getElementById('fg-target');
+  const gv=fg.value,tv=ft.value;
+  fg.innerHTML='<option value="">All gazers</option>';
+  students.forEach(s=>fg.appendChild(new Option(`student_${s}`,s)));
+  ft.innerHTML='<option value="">All targets</option>';
+  targets.forEach(t=>ft.appendChild(new Option(t.name,t.key)));
+  fg.value=gv; ft.value=tv;
+}
+document.getElementById('fg-gazer').addEventListener('change',renderGazeList);
+document.getElementById('fg-target').addEventListener('change',renderGazeList);
+
+// ══ Gesture list ══════════════════════════════════════════════════════
+function renderGestList(){
+  const fs=document.getElementById('fg2-student').value;
+  const ft=document.getElementById('fg2-type').value;
+  let anns=gestureAnns.filter(a=>(!fs||a.student===fs)&&(!ft||a.gestureKey===ft));
+  document.getElementById('gest-count').textContent=`${anns.length}${anns.length<gestureAnns.length?'/'+gestureAnns.length:''}`;
+  const el=document.getElementById('gest-list');
+  if(!anns.length){el.innerHTML=`<div class="empty-st">${gestureAnns.length?'No matches.':'No gestures yet.<br>Switch to Gesture mode<br>and drag the timeline.'}</div>`;document.getElementById('gest-note-panel').style.display='none';return;}
+  anns=anns.sort((a,b)=>a.start-b.start);
+  el.innerHTML='';
+  anns.forEach(ann=>{
+    const d=document.createElement('div');
+    d.className='ann-item'+(ann.id===selectedGest?' sel-gest':'');
+    const rng=ann.end?`${fmt(ann.start)}–${fmt(ann.end)}s`:`${fmt(ann.start)}s`;
+    const gc=ann.gestureColor;
+    d.innerHTML=`
+      <div class="ann-top">
+        <div class="adot" style="background:${ann.studentColor}"></div>
+        <span class="ann-who">s_${esc(ann.student)}</span>
+        <span class="ann-arr">·</span>
+        <div class="asq" style="background:${gc}"></div>
+        <span class="ann-what" title="${esc(ann.gestureName)}">${esc(gestureShort(ann.gestureKey))}</span>
+      </div>
+      <div class="ann-bot">
+        <span class="ann-time">${rng}</span>
+        ${ann.note?`<span class="ann-note-txt">${esc(ann.note)}</span>`:''}
+        <button class="adel" data-id="${ann.id}">×</button>
+      </div>`;
+    d.addEventListener('click',e=>{
+      if(e.target.classList.contains('adel'))return;
+      selectedGest=ann.id; video.currentTime=ann.start;
+      renderGestList();renderTL();showGestNote(ann);
+    });
+    d.querySelector('.adel').addEventListener('click',e=>{
+      e.stopPropagation();
+      gestureAnns=gestureAnns.filter(a=>a.id!==ann.id);
+      if(selectedGest===ann.id){selectedGest=null;document.getElementById('gest-note-panel').style.display='none';}
+      renderGestList();renderTL();
+    });
+    el.appendChild(d);
+  });
+  if(selectedGest!==null){const a=gestureAnns.find(x=>x.id===selectedGest);if(a)showGestNote(a);}
+}
+function showGestNote(ann){
+  const p=document.getElementById('gest-note-panel'),n=document.getElementById('gest-note');
+  p.style.display='block'; n.value=ann.note||'';
+  n.oninput=()=>{ann.note=n.value;renderGestList();};
+}
+function populateGestFilters(){
+  const fs=document.getElementById('fg2-student'),ft=document.getElementById('fg2-type');
+  const sv=fs.value,tv=ft.value;
+  fs.innerHTML='<option value="">All students</option>';
+  students.forEach(s=>fs.appendChild(new Option(`student_${s}`,s)));
+  ft.innerHTML='<option value="">All gestures</option>';
+  [...GESTURES_STATIC,...GESTURES_DYNAMIC].forEach(g=>ft.appendChild(new Option(g.name,g.key)));
+  fs.value=sv; ft.value=tv;
+}
+document.getElementById('fg2-student').addEventListener('change',renderGestList);
+document.getElementById('fg2-type').addEventListener('change',renderGestList);
+
+// ══ Exports ═══════════════════════════════════════════════════════════
+document.getElementById('btn-gaze-json').addEventListener('click',()=>{
+  dl(`${sessionName}_gaze.json`,JSON.stringify({version:'1.0',type:'gaze',sessionName,students,exportedAt:new Date().toISOString(),videoDuration:dur,targets,annotations:gazeAnns.sort((a,b)=>a.start-b.start)},null,2),'application/json');
+  setStatus(`Exported ${gazeAnns.length} gaze events as JSON`);
+});
+document.getElementById('btn-gaze-csv').addEventListener('click',()=>{
+  const rows=['id,gazer,target_key,target_name,start,end,duration,note,created_at'];
+  gazeAnns.sort((a,b)=>a.start-b.start).forEach(a=>{
+    const d=a.end!==null?(a.end-a.start).toFixed(3):'';
+    rows.push([a.id,`"student_${a.gazer}"`,`"${a.targetKey}"`,`"${a.targetName}"`,a.start.toFixed(3),a.end!=null?a.end.toFixed(3):'',d,`"${(a.note||'').replace(/"/g,'""')}"`,a.createdAt||''].join(','));
+  });
+  dl(`${sessionName}_gaze.csv`,rows.join('\n'),'text/csv');
+  setStatus(`Exported ${gazeAnns.length} gaze events as CSV`);
+});
+document.getElementById('btn-gest-json').addEventListener('click',()=>{
+  dl(`${sessionName}_gesture.json`,JSON.stringify({version:'1.0',type:'gesture',sessionName,students,exportedAt:new Date().toISOString(),videoDuration:dur,annotations:gestureAnns.sort((a,b)=>a.start-b.start)},null,2),'application/json');
+  setStatus(`Exported ${gestureAnns.length} gesture annotations as JSON`);
+});
+document.getElementById('btn-gest-csv').addEventListener('click',()=>{
+  const rows=['id,student,gesture_key,gesture_name,start,end,duration,note,created_at'];
+  gestureAnns.sort((a,b)=>a.start-b.start).forEach(a=>{
+    const d=a.end!==null?(a.end-a.start).toFixed(3):'';
+    rows.push([a.id,`"student_${a.student}"`,`"${a.gestureKey}"`,`"${a.gestureName}"`,a.start.toFixed(3),a.end!=null?a.end.toFixed(3):'',d,`"${(a.note||'').replace(/"/g,'""')}"`,a.createdAt||''].join(','));
+  });
+  dl(`${sessionName}_gesture.csv`,rows.join('\n'),'text/csv');
+  setStatus(`Exported ${gestureAnns.length} gesture annotations as CSV`);
+});
+document.getElementById('btn-all-json').addEventListener('click',()=>{
+  dl(`${sessionName}_session.json`,JSON.stringify({version:'2.0',sessionName,students,exportedAt:new Date().toISOString(),videoDuration:dur,targets,gazeAnnotations:gazeAnns.sort((a,b)=>a.start-b.start),gestureAnnotations:gestureAnns.sort((a,b)=>a.start-b.start)},null,2),'application/json');
+  setStatus(`Exported full session`);
+});
+
+// Session import
+document.getElementById('j-import').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.students)students=d.students;
+      if(d.targets)targets=d.targets;else targets=buildTargets(students);
+      if(d.sessionName){sessionName=d.sessionName;document.getElementById('sess-badge').textContent=sessionName;}
+      if(d.gazeAnnotations){gazeAnns=d.gazeAnnotations;gId=Math.max(...gazeAnns.map(a=>a.id),-1)+1;}
+      if(d.gestureAnnotations){gestureAnns=d.gestureAnnotations;gestId=Math.max(...gestureAnns.map(a=>a.id),-1)+1;}
+      buildGesturesDynamic(students);
+      populateGazeFilters();populateGestFilters();resizeTL();
+      renderGazeList();renderGestList();renderTL();
+      setStatus(`Imported: ${gazeAnns.length} gaze, ${gestureAnns.length} gestures`);
+    }catch{setStatus('Failed to parse session JSON.');}
+  };
+  r.readAsText(f);
+});
+
+document.getElementById('btn-clear').addEventListener('click',()=>{
+  const n=gazeAnns.length+gestureAnns.length;
+  if(!n)return;
+  if(!confirm(`Clear all ${gazeAnns.length} gaze + ${gestureAnns.length} gesture annotations?`))return;
+  gazeAnns=[];gestureAnns=[];selectedGaze=null;selectedGest=null;
+  document.getElementById('gaze-note-panel').style.display='none';
+  document.getElementById('gest-note-panel').style.display='none';
+  renderGazeList();renderGestList();renderTL();
+  setStatus('Cleared.');
+});
+
+// ══ Keyboard shortcuts ════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  // Close popups on Escape
+  if(e.key==='Escape'){
+    if(gazePopup.style.display!=='none'||gestPopup.style.display!=='none'){closePopups();return;}
+    if(segStart!==null){segStart=null;segEnd=null;updateSegHL();renderTL();sdot.classList.remove('seg');return;}
+    return;
+  }
+  // Number keys in gaze popup → quick select target
+  if(gazePopup.style.display!=='none'){
+    const i=parseInt(e.key)-1;
+    if(i>=0&&gazeQK){gazeQK.selectByIndex(i);return;}
+    if(e.key==='Enter'){saveGaze();return;}
+    return;
+  }
+  // Number keys in gesture popup → quick select type
+  if(gestPopup.style.display!=='none'){
+    const i=parseInt(e.key)-1;
+    if(i>=0&&gestQK){gestQK.selectByIndex(i);return;}
+    if(e.key==='Enter'){saveGesture();return;}
+    return;
+  }
+
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+
+  switch(e.code){
+    case'Space':   e.preventDefault(); video.paused?video.play():video.pause(); break;
+    case'KeyJ':    video.currentTime=Math.max(0,video.currentTime-5); break;
+    case'KeyL':    video.currentTime=Math.min(dur,video.currentTime+5); break;
+    case'ArrowLeft':  e.preventDefault(); video.currentTime=Math.max(0,video.currentTime-(e.shiftKey?5:1/FPS)); break;
+    case'ArrowRight': e.preventDefault(); video.currentTime=Math.min(dur,video.currentTime+(e.shiftKey?5:1/FPS)); break;
+    case'KeyA':
+      e.preventDefault();
+      if(!dur)break;
+      if(segMode){
+        if(segStart===null){
+          segStart=video.currentTime;segEnd=null;sdot.classList.add('seg');
+          setStatus(`Start: ${fmt(segStart)}s — press A again to set end`);
+          updateSegHL();renderTL();
+        } else {
+          segEnd=video.currentTime;
+          if(segEnd<segStart)[segStart,segEnd]=[segEnd,segStart];
+          updateSegHL();renderTL();
+          openPopup(segStart,segEnd,window.innerWidth/2,window.innerHeight/2-80);
+          sdot.classList.remove('seg');
+        }
+      } else {
+        openPopup(video.currentTime,null,window.innerWidth/2,window.innerHeight/2-80);
+      }
+      break;
+    case'KeyG': annMode='gaze'; applyAnnMode();applySegMode(); break;
+    case'KeyH': annMode='gesture'; applyAnnMode();applySegMode(); break;
+    case'KeyS': segMode=true; applySegMode(); break;
+    case'KeyP': segMode=false; applySegMode(); break;
+    case'Delete':
+    case'Backspace':
+      if(selectedGaze!==null){gazeAnns=gazeAnns.filter(a=>a.id!==selectedGaze);selectedGaze=null;document.getElementById('gaze-note-panel').style.display='none';renderGazeList();renderTL();}
+      else if(selectedGest!==null){gestureAnns=gestureAnns.filter(a=>a.id!==selectedGest);selectedGest=null;document.getElementById('gest-note-panel').style.display='none';renderGestList();renderTL();}
+      break;
+  }
+});
+
+// ══ Resize ═══════════════════════════════════════════════════════════
+new ResizeObserver(resizeTL).observe(tlScrl);
+window.addEventListener('resize',resizeTL);
+</script>
+</body>
+</html>
