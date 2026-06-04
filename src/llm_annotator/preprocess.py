@@ -1,7 +1,7 @@
 import llm_annotator.utils as utils
 import pandas as pd
 
-from typing import List
+from typing import List, Dict
 
 
 @utils.component("pre-process")
@@ -26,3 +26,36 @@ def pre_process_transcript(transcript_df: pd.DataFrame, obs_list: List[str] | st
     transcript_df["obsid"] = transcript_df["obsid"].astype(str)
     transcript_df = transcript_df[transcript_df["obsid"].isin(obs_list)]
     return "transcript_df", transcript_df
+
+
+def filter_by_feature_rules(df: pd.DataFrame, feature_meta: Dict) -> pd.DataFrame:
+    """Drop rows that should be excluded based on the feature's filter_if rules.
+
+    For each code name listed in feature_meta["filter_if"], if a column with
+    that name exists in df and has value 1, the row is excluded. This lets
+    sheet authors control filtering (e.g. remove offtask-labeled utterances
+    before annotating Directions) without hardcoding any feature names here.
+
+    Args:
+        df: Transcript DataFrame, may contain pre-existing annotation columns.
+        feature_meta: Feature dict produced by generate_features(), must have
+            a "filter_if" key (list of str, may be empty).
+
+    Returns:
+        Filtered copy of df.
+    """
+    filter_codes = feature_meta.get("filter_if", [])
+    if not filter_codes:
+        return df
+
+    mask = pd.Series(False, index=df.index)
+    for code in filter_codes:
+        if code in df.columns:
+            mask = mask | (df[code] == 1)
+        else:
+            print(f"[filter_by_feature_rules] Column '{code}' not found in df — skipping filter for this code.")
+
+    n_dropped = mask.sum()
+    if n_dropped:
+        print(f"[filter_by_feature_rules] Dropped {n_dropped} rows where {filter_codes} == 1.")
+    return df[~mask].copy()
