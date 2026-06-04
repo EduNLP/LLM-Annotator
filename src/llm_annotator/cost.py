@@ -102,8 +102,22 @@ def estimate_cost(config, transcript_df: pd.DataFrame, feature_dict: Dict,
     # --- Video tokens ---
     video_tokens = 0
     if config.use_video:
-        n_obs = len(transcript_df["obsid"].unique()) if "obsid" in transcript_df.columns else 1
-        video_tokens = n_obs * avg_segment_duration_sec * GEMINI_VIDEO_TOKENS_PER_SEC
+        if config.obs_sheet_source:
+            try:
+                from llm_annotator.video_loader import load_obs_sheet, total_video_seconds
+                obs_df = load_obs_sheet(config.obs_sheet_source)
+                obs_ids = transcript_df["obsid"].astype(str).unique() \
+                    if "obsid" in transcript_df.columns else []
+                total_secs = sum(total_video_seconds(obs_df, oid) for oid in obs_ids)
+                video_tokens = total_secs * GEMINI_VIDEO_TOKENS_PER_SEC
+                print(f"  [video] {len(obs_ids)} obs, {total_secs:.0f}s total → {video_tokens:.0f} tokens")
+            except Exception as e:
+                print(f"  [video] Could not load obs sheet ({e}), falling back to avg estimate.")
+                n_obs = len(transcript_df["obsid"].unique()) if "obsid" in transcript_df.columns else 1
+                video_tokens = n_obs * avg_segment_duration_sec * GEMINI_VIDEO_TOKENS_PER_SEC
+        else:
+            n_obs = len(transcript_df["obsid"].unique()) if "obsid" in transcript_df.columns else 1
+            video_tokens = n_obs * avg_segment_duration_sec * GEMINI_VIDEO_TOKENS_PER_SEC
 
     # --- Compute costs ---
     results = {}
