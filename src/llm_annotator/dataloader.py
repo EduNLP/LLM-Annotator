@@ -149,15 +149,28 @@ def generate_features(dataloader: DataLoader, feature: str = [])\
     for sheet_name, df in dataloader.sheets_data.items():  # Iterate over sheet names and dataframes
         for idx, row in df.iterrows():
             if "Code" in df.columns and feature == row['Code']:
+                def _col(col):
+                    return str(row[col]).strip() if col in df.columns and pd.notna(row[col]) and str(row[col]).strip() != "" else ""
+
                 dataloader.features[feature] = {
                     "definition": row["Definition"],
-                    "format": "Answer 1 if the utterance relates to the category, 0 if the utterances doesn't relate to the category.",  # Fixed typo "unkown" -> "unknown"
-                    "example1": row["example1"] if "example1" in df.columns else "",
-                    "example2": row["example2"] if "example2" in df.columns else "",
-                    "example3": row["example3"] if "example3" in df.columns else "",
-                    "nonexample1": row["nonexample1"] if "nonexample1" in df.columns else "",
-                    "nonexample2": row["nonexample2"] if "nonexample2" in df.columns else "",
-                    "nonexample3": row["nonexample3"] if "nonexample3" in df.columns else "",
+                    "format": "Answer 1 if the utterance relates to the category, 0 if the utterances doesn't relate to the category.",
+                    "example1": _col("example1"),
+                    "example2": _col("example2"),
+                    "example3": _col("example3"),
+                    "nonexample1": _col("nonexample1"),
+                    "nonexample2": _col("nonexample2"),
+                    "nonexample3": _col("nonexample3"),
+                    # Feature rules — filled in by the sheet author, never hardcoded here.
+                    # filter_if: comma-separated code names; exclude utterances already
+                    #   labeled with any of these codes before annotating this feature.
+                    "filter_if": [c.strip() for c in _col("filter_if").split(",") if c.strip()],
+                    # linked_with: run this feature together with these in one prompt.
+                    "linked_with": [c.strip() for c in _col("linked_with").split(",") if c.strip()],
+                    # subcode_of: this feature is a subcode of another code.
+                    "subcode_of": _col("subcode_of"),
+                    # extra_context_type: key into ExperimentConfig.extra_context dict.
+                    "extra_context_type": _col("extra_context_type"),
                 }
     return "feature_dict", dataloader.features
 
