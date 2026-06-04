@@ -3,7 +3,7 @@ from llm_annotator.constants import GEMINI_MODEL_IDS
 
 from enum import Enum
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 class ModelType(Enum):
     GPT4O = "gpt-4o"
@@ -46,6 +46,58 @@ model_configs = {
         "llama-3b-local": ModelConfig(ModelType.LLAMA7B_LOCAL, max_tokens=512),
         "llama-70b-local": ModelConfig(ModelType.LLAMA13B_LOCAL, max_tokens=512)
 }
+
+@dataclass
+class ExperimentConfig:
+    """Top-level config for a single annotation experiment run."""
+
+    # Models to annotate with
+    model_list: list = field(default_factory=list)
+
+    # Features to annotate (run together in one prompt when linked by sheet rules)
+    feature_list: list = field(default_factory=list)
+
+    # Data sources
+    transcript_source: str = ""
+    sheet_source: str = ""
+    obs_list: object = "all"  # list[str] or "all"
+
+    # Prompt context window
+    bwd_context_count: int = 2
+    fwd_context_count: int = 0
+
+    # Per-feature extra context injected into the prompt
+    # e.g. {"Directions": "<activity instructions text>"}
+    extra_context: dict = field(default_factory=dict)
+
+    # Multimodal video (whole-segment, not pre-cut clips)
+    use_video: bool = False
+    # Google Sheet ID with observation metadata:
+    #   - "Index" column: obsid → "25-0195" style value
+    #   - "Video Link" column: Drive folder hyperlink containing OBS-25-XXXX_Video* files
+    #   - "Segment Timestamps" column: free-text block mapping segment letters to time ranges
+    obs_sheet_source: Optional[str] = None
+
+    # Run control
+    n_uttr: int = 1
+    if_test: bool = False
+    if_wait: bool = False
+    save_dir: str = "result/"
+
+    # Resume from existing batch IDs (skip submission, go straight to fetch)
+    # e.g. {"gpt-4o": "batch_abc123"}
+    resume_batch_ids: dict = field(default_factory=dict)
+
+    # Prompt paths (use package defaults if empty)
+    system_prompt_path: str = "data/prompts/system_prompt.txt"
+    prompt_path: str = ""
+    annotation_prompt_path: str = ""
+    mode: str = ""
+
+    def __post_init__(self):
+        if self.use_video and not self.obs_sheet_source:
+            raise ValueError("obs_sheet_source must be set when use_video=True")
+
 
 annotation_configs = {
     "claude-3-5": batch_anthropic_annotate,
