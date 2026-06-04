@@ -69,6 +69,71 @@ def fetch(timestamp: str = None,
     pipe()
 
 
+def resume(feature: str,
+           resume_batch_ids: dict,
+           transcript_source: str,
+           sheet_source: str,
+           save_dir: str = "",
+           timestamp: str = None):
+    """Fetch results for a batch that was already submitted but not yet retrieved.
+
+    Use this when Colab crashed after the API batch was submitted but before
+    fetch() was called. Provide the batch IDs printed in the logs.
+
+    Args:
+        feature: Feature name (must match what was annotated).
+        resume_batch_ids: Dict mapping model name to batch ID,
+            e.g. {"gpt-5-mini": "batch_abc123"}.
+        transcript_source: Same transcript_source used in the original run.
+        sheet_source: Same sheet_source used in the original run.
+        save_dir: Save directory. Uses "result/" if empty.
+        timestamp: Timestamp string from the original run. If None, a new
+            timestamp is created and stub metadata is written so fetch_pipe
+            can locate the batch files.
+    """
+    import json
+    from datetime import datetime
+    from llm_annotator.utils import create_batch_dir, Batch, BatchRequestCounts
+
+    if not resume_batch_ids:
+        raise ValueError("resume_batch_ids is empty — nothing to resume.")
+
+    ts = timestamp or datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    effective_save_dir = save_dir or "result"
+
+    # Write stub metadata.json so fetch_pipe can reconstruct the DataLoader
+    batch_dir = create_batch_dir(effective_save_dir, feature, ts)
+    metadata = {
+        "transcript_source": transcript_source,
+        "sheet_source": sheet_source,
+        "feature": feature,
+        "timestamp": ts,
+        "annotation_prompt_path": "",
+    }
+    meta_path = os.path.join(batch_dir, "metadata.json")
+    with open(meta_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+    print(f"[resume] Wrote stub metadata to {meta_path}")
+
+    # Write one stub batch JSON per model so load_batch_files can find them
+    for model, batch_id in resume_batch_ids.items():
+        stub = Batch(
+            id=batch_id,
+            status="completed",
+            created_at="",
+            expires_at="",
+            request_counts=BatchRequestCounts(),
+            stored_at=ts,
+        ).to_dict()
+        batch_path = os.path.join(batch_dir, f"{model}.json")
+        with open(batch_path, "w") as f:
+            json.dump(stub, f, indent=2)
+        print(f"[resume] Wrote stub batch file for {model} (id={batch_id})")
+
+    print(f"[resume] Fetching results for feature='{feature}' timestamp='{ts}'")
+    fetch(timestamp=ts, feature=feature, save_dir=effective_save_dir)
+
+
 def set_working_dir():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(current_dir, "../.."))
