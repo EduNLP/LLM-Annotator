@@ -18,9 +18,10 @@
   --red:#e05a4b; --grn:#4caf7d;
   --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
   --r4:4px; --r6:6px; --r8:8px; --r12:12px;
+  --video-height:48vh;
 }
 html,body{height:100%;overflow:hidden;}
-body{font-family:var(--font);background:var(--bg0);color:var(--tx0);font-size:13px;line-height:1.4;}
+body{font-family:var(--font);background:var(--bg0);color:var(--tx0);font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
@@ -29,11 +30,11 @@ body{font-family:var(--font);background:var(--bg0);color:var(--tx0);font-size:13
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:400;}
 .overlay.hidden{display:none;}
 .modal{background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r12);padding:28px;width:500px;max-width:95vw;max-height:92vh;overflow-y:auto;}
-.modal h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px;letter-spacing:-.2px;}
+.modal h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px;letter-spacing:0;}
 .fl{display:block;font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--tx2);margin-bottom:5px;}
 .fg{margin-bottom:14px;}
-.field{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r6);padding:7px 10px;color:var(--tx0);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;}
-.field:focus{border-color:var(--acc);}
+.field{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r6);padding:7px 10px;color:var(--tx0);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s;}
+.field:focus{border-color:var(--acc);box-shadow:0 0 0 2px rgba(232,197,71,.14);}
 .field::placeholder{color:var(--tx3);}
 .divider{height:1px;background:var(--line);margin:14px 0;}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
@@ -46,7 +47,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--tx0);font-size:13
 .add-link:hover{opacity:1;text-decoration:underline;}
 
 /* ── Buttons ── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 11px;font-size:12px;font-family:var(--font);font-weight:500;color:var(--tx1);background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r6);cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.1px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 11px;font-size:12px;font-family:var(--font);font-weight:500;color:var(--tx1);background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r6);cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:0;}
 .btn:hover{background:var(--bg4);color:var(--tx0);border-color:var(--line2);}
 .btn.primary{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600;}
 .btn.primary:hover{background:var(--acc2);}
@@ -57,27 +58,40 @@ label.btn{cursor:pointer;}
 kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(--line2);border-radius:3px;background:var(--bg2);color:var(--tx2);}
 
 /* ── Popup ── */
-.popup{position:fixed;z-index:500;background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r12);padding:16px 18px;box-shadow:0 12px 48px rgba(0,0,0,.65);width:310px;}
-.popup-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.popup{position:fixed;z-index:500;background:#151515;border:1px solid #3a3a3a;border-radius:var(--r12);padding:16px 18px;box-shadow:0 18px 56px rgba(0,0,0,.72),0 0 0 1px rgba(255,255,255,.03);width:360px;max-width:calc(100vw - 18px);max-height:calc(100vh - 18px);overflow-y:auto;}
+.popup-title{position:sticky;top:-16px;z-index:2;background:var(--bg1);font-size:13px;font-weight:600;margin:-16px -18px 14px;padding:16px 18px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);}
 .popup-title i{font-size:15px;flex-shrink:0;}
 .tbadge{font-size:10px;font-family:var(--mono);color:var(--tx2);background:var(--bg3);border:1px solid var(--line);border-radius:var(--r4);padding:2px 6px;margin-left:auto;}
 .pf{margin-bottom:10px;}
 .pf label{display:block;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--tx2);margin-bottom:4px;}
 .pf .field{padding:5px 8px;font-size:12px;}
-.popup-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:14px;padding-top:10px;border-top:1px solid var(--line);}
+.popup-actions{position:sticky;bottom:-16px;background:var(--bg1);display:flex;gap:6px;justify-content:flex-end;margin:14px -18px -16px;padding:10px 18px 16px;border-top:1px solid var(--line);}
 
 /* ── Quick-pick grid ── */
-.qk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:10px;}
+.qk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:10px;max-height:224px;overflow-y:auto;padding-right:3px;}
+#gp2-quick{max-height:224px;}
+.point-target-wrap{display:none;border:1px solid rgba(232,197,71,.35);background:rgba(232,197,71,.05);border-radius:var(--r8);padding:10px;margin-bottom:10px;}
+.point-target-wrap.on{display:block;}
+.point-target-wrap label{color:var(--acc);}
+/* Social (directed): lean / touch / pass */
+.social-grid{grid-template-columns:repeat(3,1fr);max-height:none;margin-bottom:8px;}
+.social-grid .qk{justify-content:center;min-height:42px;font-weight:600;}
+.social-target-wrap{display:none;border:1px solid rgba(155,127,232,.4);background:rgba(155,127,232,.06);border-radius:var(--r8);padding:10px;margin-bottom:10px;}
+.social-target-wrap.on{display:block;}
+.social-target-wrap label{color:var(--gest);}
+.social-target-wrap .qk-grid{grid-template-columns:repeat(2,1fr);max-height:120px;}
 .qk{
   position:relative;display:flex;align-items:center;gap:8px;
-  padding:8px 10px;
+  min-height:38px;padding:8px 10px;
   font-size:12px;font-family:var(--font);font-weight:500;
   border-radius:var(--r6);border:1.5px solid var(--line2);
   cursor:pointer;color:var(--tx1);background:var(--bg2);
   transition:border-color .12s,background .12s,color .12s,opacity .12s;
   user-select:none;text-align:left;line-height:1.2;
 }
-.qk:hover{background:var(--bg3);color:var(--tx0);}
+.qk:hover{background:var(--bg3);color:var(--tx0);border-color:rgba(255,255,255,.18);}
+.qk.qk-point{border-color:rgba(232,197,71,.55)!important;background:rgba(232,197,71,.08);}
+.qk.qk-point .qk-label{color:var(--acc);font-weight:600;}
 .qk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:transform .1s;}
 .qk-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .qk-num{font-size:9px;font-family:var(--mono);color:var(--tx3);flex-shrink:0;background:var(--bg3);border-radius:3px;padding:1px 4px;line-height:1.4;}
@@ -116,18 +130,25 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 .left{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line);}
 
 /* Video area */
-.varea{background:#000;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.varea{height:var(--video-height);min-height:230px;background:#050505;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .vph{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--tx3);padding:28px;user-select:none;}
 .vph i{font-size:40px;}
 .vph p{font-size:13px;color:var(--tx2);}
 .vph small{font-size:11px;}
-#video{display:none;max-height:36vh;width:100%;object-fit:contain;}
+#video{display:none;width:100%;height:100%;max-height:100%;object-fit:contain;background:#000;image-rendering:auto;}
+body.video-compact{--video-height:34vh;}
+body.video-roomy{--video-height:48vh;}
+body.video-large{--video-height:62vh;}
+body.video-theater{--video-height:calc(100vh - 168px);}
+body.video-cover #video{object-fit:cover;}
+body.video-clarity #video{filter:contrast(1.04) saturate(1.06) brightness(1.02);}
 
 /* Player bar */
 .player{display:flex;align-items:center;border-bottom:1px solid var(--line);background:var(--bg1);flex-shrink:0;}
 .transport{display:flex;align-items:center;gap:0;padding:5px 8px;border-right:1px solid var(--line);flex-shrink:0;}
 .tbtn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--r6);cursor:pointer;color:var(--tx2);background:none;border:none;transition:all .1s;flex-shrink:0;}
 .tbtn:hover{background:var(--bg3);color:var(--tx0);}
+.tbtn.on{background:rgba(232,197,71,.12);color:var(--acc);}
 .tbtn.play{width:34px;height:34px;background:var(--acc);color:#111;border-radius:var(--r8);margin:0 2px;}
 .tbtn.play:hover{background:var(--acc2);}
 .tbtn i{font-size:15px;}
@@ -145,6 +166,12 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 .player-right{display:flex;align-items:center;gap:6px;padding:0 10px;border-left:1px solid var(--line);flex-shrink:0;}
 .speed-sel{background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r4);color:var(--tx1);font-family:var(--mono);font-size:11px;padding:3px 5px;outline:none;}
 .speed-sel:focus{border-color:var(--acc);}
+.vsize{display:flex;align-items:center;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r6);overflow:hidden;}
+.vsize button{width:28px;height:28px;border:0;border-right:1px solid var(--line2);background:transparent;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.vsize button:last-child{border-right:0;}
+.vsize button:hover,.vsize button.on{background:rgba(232,197,71,.12);color:var(--acc);}
+.vsize button i{font-size:14px;}
+.fit-sel{background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r4);color:var(--tx1);font-family:var(--font);font-size:11px;padding:3px 5px;outline:none;}
 
 /* Timeline */
 .tl-section{flex:1;display:flex;flex-direction:column;min-height:0;}
@@ -153,12 +180,37 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 .tl-mode{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
 .tl-mode.gaze{background:var(--gaze-dim);color:var(--gaze);}
 .tl-mode.gest{background:var(--gest-dim);color:var(--gest);}
-.tl-hint{font-size:10px;color:var(--tx3);margin-left:auto;}
+.tl-hint{font-size:10px;color:var(--tx2);margin-left:auto;}
 .tl-scroll{flex:1;overflow-y:auto;overflow-x:hidden;}
-#tl{display:block;cursor:crosshair;}
+#tl{display:block;cursor:crosshair;width:100%;}
 
 /* ── Sidebar: stacked panels ── */
-.sidebar{width:340px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg1);}
+.sidebar{width:380px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg1);}
+
+/* Annotation toolbox */
+.toolbox{border-bottom:2px solid var(--line2);background:var(--bg1);flex-shrink:0;}
+.toolbox-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);}
+.toolbox-title{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--tx2);}
+.toolbox-status{font-size:10px;font-family:var(--mono);color:var(--acc);}
+.toolbox-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 12px;}
+.tool-card{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r6);background:var(--bg2);color:var(--tx1);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;text-align:left;transition:background .12s,border-color .12s,color .12s,transform .12s;}
+.tool-card:hover{background:var(--bg3);color:var(--tx0);}
+.tool-card:active{transform:translateY(1px);}
+.tool-card.active-gaze{border-color:rgba(74,158,221,.55);background:var(--gaze-dim);color:var(--gaze);}
+.tool-card.active-gest{border-color:rgba(155,127,232,.55);background:var(--gest-dim);color:var(--gest);}
+.tool-card.active-mode{border-color:rgba(232,197,71,.55);background:rgba(232,197,71,.12);color:var(--acc);}
+.tool-card.active-instant{border-color:rgba(232,197,71,.8);background:rgba(232,197,71,.18);color:var(--acc);box-shadow:inset 0 0 0 1px rgba(232,197,71,.16);}
+.tool-card i{font-size:16px;flex-shrink:0;}
+.tool-wide{grid-column:1/-1;justify-content:center;color:#111;background:var(--acc);border-color:var(--acc);}
+.tool-wide:hover{background:var(--acc2);color:#111;}
+.tool-hint{padding:0 12px 10px;font-size:11px;line-height:1.45;color:var(--tx2);}
+@media (max-width:980px){
+  .main{flex-direction:column;}
+  .left{border-right:0;border-bottom:1px solid var(--line);}
+  .sidebar{width:100%;height:42vh;}
+  body.video-large{--video-height:48vh;}
+  body.video-theater{--video-height:54vh;}
+}
 
 /* Gaze panel (top half) + Gesture panel (bottom half) */
 .panel{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0;}
@@ -297,7 +349,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 </div>
 
 <!-- ══ GAZE POPUP ══ -->
-<div class="popup" id="gaze-popup" style="display:none;width:340px">
+<div class="popup" id="gaze-popup" style="display:none;width:360px">
   <div class="popup-title" style="color:var(--gaze)"><i class="ti ti-eye"></i> Gaze event <span class="tbadge" id="gp-time"></span></div>
   <div class="pf"><label>Who is looking</label><select class="field" id="gp-gazer"></select></div>
   <div class="pf">
@@ -313,13 +365,26 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 </div>
 
 <!-- ══ BEHAVIOR POPUP ══ -->
-<div class="popup" id="gest-popup" style="display:none;width:340px">
+<div class="popup" id="gest-popup" style="display:none;width:380px">
   <div class="popup-title" style="color:var(--gest)"><i class="ti ti-hand-stop"></i> Behavior <span class="tbadge" id="gp2-time"></span></div>
   <div class="pf"><label>Student</label><select class="field" id="gp2-student"></select></div>
   <div class="pf">
-    <label>Behavior <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–9 to quick-pick)</span></label>
+    <label>Behavior <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–8 to quick-pick)</span></label>
     <div class="qk-grid" id="gp2-quick"></div>
     <select class="field" id="gp2-type"></select>
+  </div>
+  <div class="pf">
+    <label>Social (directed) <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">pick action, then who it's directed at</span></label>
+    <div class="qk-grid social-grid" id="gp2-social"></div>
+  </div>
+  <div class="social-target-wrap" id="gp2-social-target-wrap">
+    <label>Directed at <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–8 to quick-pick)</span></label>
+    <div class="qk-grid" id="gp2-social-students"></div>
+  </div>
+  <div class="point-target-wrap" id="gp2-point-target-wrap">
+    <label>Pointing at <span style="font-size:9px;color:var(--tx3);text-transform:none;letter-spacing:0">(1–8 to quick-pick)</span></label>
+    <div class="qk-grid" id="gp2-point-quick"></div>
+    <select class="field" id="gp2-target"></select>
   </div>
   <div class="pf"><label>Note</label><input type="text" class="field" id="gp2-note" placeholder="optional…"></div>
   <div class="popup-actions">
@@ -340,7 +405,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
     <div class="sep"></div>
     <div class="pill">
       <button id="pill-seg" class="on-acc">Segment</button>
-      <button id="pill-pt">Point</button>
+      <button id="pill-pt">Time point</button>
     </div>
     <div class="topbar-right">
       <label class="btn sm" for="v-upload"><i class="ti ti-upload"></i> Video</label>
@@ -381,6 +446,17 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
           </div>
         </div>
         <div class="player-right">
+          <div class="vsize" aria-label="Video size">
+            <button id="vsize-compact" title="Compact video"><i class="ti ti-layout-bottombar"></i></button>
+            <button id="vsize-roomy" class="on" title="Roomy video"><i class="ti ti-layout-navbar"></i></button>
+            <button id="vsize-large" title="Large video"><i class="ti ti-maximize"></i></button>
+            <button id="vsize-theater" title="Theater video"><i class="ti ti-arrows-maximize"></i></button>
+          </div>
+          <select class="fit-sel" id="video-fit" title="Video fit">
+            <option value="contain" selected>Fit</option>
+            <option value="cover">Fill</option>
+          </select>
+          <button class="tbtn" id="video-clarity" title="Boost video clarity"><i class="ti ti-sparkles"></i></button>
           <select class="speed-sel" id="speed">
             <option value="0.1">0.1×</option><option value="0.25">0.25×</option>
             <option value="0.5">0.5×</option><option value="1" selected>1×</option>
@@ -402,6 +478,20 @@ kbd{font-family:var(--mono);font-size:10px;padding:1px 5px;border:1px solid var(
 
     <!-- Right sidebar: stacked gaze + gesture panels -->
     <div class="sidebar">
+      <div class="toolbox">
+        <div class="toolbox-head">
+          <span class="toolbox-title">Annotation toolbox</span>
+          <span class="toolbox-status" id="toolbox-status">Gaze · Segment</span>
+        </div>
+        <div class="toolbox-grid">
+          <button class="tool-card active-gaze" id="tool-gaze"><i class="ti ti-eye"></i><span>Gaze</span></button>
+          <button class="tool-card" id="tool-gest"><i class="ti ti-hand-stop"></i><span>Behavior</span></button>
+          <button class="tool-card active-mode" id="tool-seg"><i class="ti ti-timeline-event"></i><span>Segment</span></button>
+          <button class="tool-card" id="tool-point"><i class="ti ti-map-pin"></i><span>Time point</span></button>
+          <button class="tool-card tool-wide" id="btn-annotate-now"><i class="ti ti-circle-plus"></i><span>Annotate current time</span></button>
+        </div>
+        <div class="tool-hint" id="tool-hint">Drag the timeline for a segment, or use the button to mark the current frame.</div>
+      </div>
 
       <!-- Gaze panel -->
       <div class="panel">
@@ -484,11 +574,12 @@ const GEST_COLORS = {
   write_draw:'#4a9edd', type_use_device:'#45b7d1', manipulate:'#639922',
   mic_fidget:'#e8c547', dance:'#f0b27a', head_nod:'#82e0aa',
   head_shake:'#e05a4b', raise_hand:'#9b7fe8', point:'#fac775',
-  laughter:'#f7dc6f',  smile:'#5dcaa5',  yawn:'#b8a0e8',  stand:'#76d7c4', pass:'#3b82c4',take:'#e8745f'
+  laughter:'#f7dc6f',  smile:'#5dcaa5',  yawn:'#b8a0e8',  stand:'#76d7c4', pass:'#3b82c4',take:'#e8745f',
+  walk_out_frame:'#3bb273', come_back_frame:'#2b2d42'
 };
 const LEAN_COLOR = '#4a9edd';
 const TOUCH_COLOR = '#d4537e';
-
+const PASS_COLOR = '#f2b84b';
 // ══ Gesture definitions ═══════════════════════════════════════════════
 const GESTURES_STATIC = [
   {key:'write_draw',      name:'Write / Draw',      short:'Write'},
@@ -505,20 +596,25 @@ const GESTURES_STATIC = [
   {key:'yawn',            name:'Yawn',              short:'Yawn'},
   {key:'stand',           name:'Stand',             short:'Stand'},
   {key:'pass',           name:'Pass',             short:'Pass'},
-  {key:'take',           name:'Take',             short:'Take'}
+  {key:'take',           name:'Take',             short:'Take'},
+  {key:'walk_out_frame',           name:'Walks out of frame',             short:'Walks out of frame'},
+    {key:'come_back_frame',           name:'Comes back in frame',             short:'Comes back in frame'}
+
 ];
-let GESTURES_DYNAMIC = []; // lean_in_N, touch_N
+let GESTURES_DYNAMIC = []; // lean_in_N, touch_N, pass_N
 function buildGesturesDynamic(studs){
   GESTURES_DYNAMIC = [];
   studs.forEach((s,i)=>{
     GESTURES_DYNAMIC.push({key:`lean_in_student_${s}`, name:`Lean in → s_${s}`, short:`Lean→${s}`, color:LEAN_COLOR});
     GESTURES_DYNAMIC.push({key:`touch_student_${s}`,   name:`Touch → s_${s}`,   short:`Touch→${s}`, color:TOUCH_COLOR});
+    GESTURES_DYNAMIC.push({key:`pass_student_${s}`,   name:`Pass → s_${s}`,   short:`Pass${s}`, color:PASS_COLOR});
   });
 }
 function gestureColor(key){
   if(GEST_COLORS[key]) return GEST_COLORS[key];
   if(key.startsWith('lean_in')) return LEAN_COLOR;
   if(key.startsWith('touch'))   return TOUCH_COLOR;
+  if(key.startsWith('pass'))   return PASS_COLOR;
   return '#888';
 }
 function gestureShort(key){
@@ -557,6 +653,7 @@ function buildTargets(studs){
 
 // ══ State ════════════════════════════════════════════════════════════
 let sessionName='', students=[], gazeAnns=[], gestureAnns=[];
+let lastGazeStudent='', lastBehaviorStudent='';
 let selectedGaze=null, selectedGest=null;
 let annMode='gaze';   // 'gaze'|'gesture'
 let segMode=true;     // true=segment, false=point
@@ -568,6 +665,7 @@ const FPS=30;
 let tlDrag=false, tlDragT0=null, tlDragX=0, tlDragWasPlaying=false, lastScrubT=-1;
 let tlHover=false, tlMouseX=0, tlHoverT=0;
 let rafId=null;
+let tlW=0, tlH=0;
 
 // Seek drag
 let seekDrag=false;
@@ -587,6 +685,22 @@ const gestPopup = document.getElementById('gest-popup');
 const fmt=t=>t.toFixed(3);
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const setStatus=m=>smsg.textContent=m;
+function updateToolbox(){
+  const gaze=document.getElementById('tool-gaze');
+  const gest=document.getElementById('tool-gest');
+  const seg=document.getElementById('tool-seg');
+  const point=document.getElementById('tool-point');
+  const status=document.getElementById('toolbox-status');
+  const hint=document.getElementById('tool-hint');
+  if(!gaze||!gest||!seg||!point)return;
+  gaze.classList.toggle('active-gaze',annMode==='gaze');
+  gest.classList.toggle('active-gest',annMode==='gesture');
+  seg.classList.toggle('active-mode',segMode);
+  point.classList.toggle('active-instant',!segMode);
+  status.textContent=(annMode==='gaze'?'Gaze':'Behavior')+' · '+(segMode?'Segment':'Time point');
+  if(segMode&&segStart!==null) hint.textContent=`Segment start set at ${fmt(segStart)}s. Press Annotate current time or A again to finish.`;
+  else hint.textContent=segMode?'Drag the timeline for a segment, or press A to set start/end.':'Click the timeline to mark one instant. In Behavior mode, choose Point to add who/what it points at.';
+}
 function dl(name,content,mime){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([content],{type:mime}));
@@ -689,6 +803,8 @@ function startSession(keepVideo=false){
   sessionName=document.getElementById('s-name').value.trim()||'session';
   segMode=document.querySelector('input[name="s-mode"]:checked').value==='segment';
   students=valid;
+  if(!students.includes(lastGazeStudent)) lastGazeStudent=students[0]||'';
+  if(!students.includes(lastBehaviorStudent)) lastBehaviorStudent=students[0]||'';
   targets=buildTargets(students);
   buildGesturesDynamic(students);
   document.getElementById('sess-badge').textContent=sessionName;
@@ -762,6 +878,26 @@ document.getElementById('tb-f1').addEventListener('click',()=>{video.currentTime
 document.getElementById('tb-b5').addEventListener('click',()=>{video.currentTime=Math.max(0,video.currentTime-5);});
 document.getElementById('tb-f5').addEventListener('click',()=>{video.currentTime=Math.min(dur,video.currentTime+5);});
 document.getElementById('speed').addEventListener('change',e=>{video.playbackRate=parseFloat(e.target.value);});
+function setVideoSize(size){
+  document.body.classList.remove('video-compact','video-roomy','video-large','video-theater');
+  document.body.classList.add('video-'+size);
+  ['compact','roomy','large','theater'].forEach(s=>{
+    document.getElementById('vsize-'+s).classList.toggle('on',s===size);
+  });
+  setTimeout(resizeTL,60);
+}
+document.getElementById('vsize-compact').addEventListener('click',()=>setVideoSize('compact'));
+document.getElementById('vsize-roomy').addEventListener('click',()=>setVideoSize('roomy'));
+document.getElementById('vsize-large').addEventListener('click',()=>setVideoSize('large'));
+document.getElementById('vsize-theater').addEventListener('click',()=>setVideoSize('theater'));
+document.getElementById('video-fit').addEventListener('change',e=>{
+  document.body.classList.toggle('video-cover',e.target.value==='cover');
+});
+document.getElementById('video-clarity').addEventListener('click',()=>{
+  document.body.classList.toggle('video-clarity');
+  document.getElementById('video-clarity').classList.toggle('on',document.body.classList.contains('video-clarity'));
+});
+setVideoSize('roomy');
 
 // Seekbar
 function seekTo(e){
@@ -796,16 +932,42 @@ function applyAnnMode(){
   const badge=document.getElementById('tl-mode-badge');
   if(badge){badge.className='tl-mode '+(annMode==='gaze'?'gaze':'gest');badge.textContent=annMode==='gaze'?'Gaze':'Behavior';}
   setStatus(annMode==='gaze'?'Gaze mode — drag timeline to annotate':'Behavior mode — drag timeline to annotate');
+  updateToolbox();
 }
 function applySegMode(){
   const ps=document.getElementById('pill-seg'), pp=document.getElementById('pill-pt');
   ps.className=segMode?'on-acc':'';
   pp.className=!segMode?'on-acc':'';
+  updateToolbox();
 }
 document.getElementById('pill-gaze').addEventListener('click',()=>{annMode='gaze';applyAnnMode();applySegMode();});
 document.getElementById('pill-gest').addEventListener('click',()=>{annMode='gesture';applyAnnMode();applySegMode();});
 document.getElementById('pill-seg').addEventListener('click',()=>{segMode=true;applySegMode();});
 document.getElementById('pill-pt').addEventListener('click',()=>{segMode=false;applySegMode();});
+document.getElementById('tool-gaze').addEventListener('click',()=>{annMode='gaze';applyAnnMode();applySegMode();});
+document.getElementById('tool-gest').addEventListener('click',()=>{annMode='gesture';applyAnnMode();applySegMode();});
+document.getElementById('tool-seg').addEventListener('click',()=>{segMode=true;applySegMode();});
+document.getElementById('tool-point').addEventListener('click',()=>{segMode=false;applySegMode();});
+document.getElementById('btn-annotate-now').addEventListener('click',annotateAtPlayhead);
+
+function annotateAtPlayhead(){
+  if(!dur){setStatus('Load a video before annotating.');return;}
+  if(segMode){
+    if(segStart===null){
+      segStart=video.currentTime;segEnd=null;sdot.classList.add('seg');
+      setStatus(`Start: ${fmt(segStart)}s — finish the segment at the end frame`);
+      updateSegHL();renderTL();updateToolbox();
+    } else {
+      segEnd=video.currentTime;
+      if(segEnd<segStart)[segStart,segEnd]=[segEnd,segStart];
+      updateSegHL();renderTL();updateToolbox();
+      openPopup(segStart,segEnd,window.innerWidth/2,window.innerHeight/2-80);
+      sdot.classList.remove('seg');
+    }
+  } else {
+    openPopup(video.currentTime,null,window.innerWidth/2,window.innerHeight/2-80);
+  }
+}
 
 // ══ Timeline ══════════════════════════════════════════════════════════
 const LANE=24, RULER=26, LPAD=6, RPAD=6;
@@ -818,16 +980,23 @@ function resizeTL(){
   if(!w)return;
   // height = ruler + gaze header + gaze lanes + gesture header + gesture lanes
   const h=RULER + SEC_HDR + students.length*LANE + SEC_HDR + students.length*LANE;
-  tl.width=w; tl.height=Math.max(h, RULER+SEC_HDR*2+4);
+  const cssH=Math.max(h, RULER+SEC_HDR*2+4);
+  const dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1));
+  tlW=w; tlH=cssH;
+  tl.style.width=w+'px';
+  tl.style.height=cssH+'px';
+  tl.width=Math.round(w*dpr);
+  tl.height=Math.round(cssH*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
   renderTL();
 }
 
-function tToX(t){return LPAD+(t/dur)*(tl.width-LPAD-RPAD);}
-function xToT(x){return Math.max(0,Math.min(dur,((x-LPAD)/(tl.width-LPAD-RPAD))*dur));}
+function tToX(t){return LPAD+(t/dur)*(tlW-LPAD-RPAD);}
+function xToT(x){return Math.max(0,Math.min(dur,((x-LPAD)/(tlW-LPAD-RPAD))*dur));}
 
 function renderTL(){
-  if(!tl.width)return;
-  const W=tl.width, H=tl.height;
+  if(!tlW)return;
+  const W=tlW, H=tlH;
   ctx.clearRect(0,0,W,H);
   const bd='rgba(255,255,255,0.06)', tx2='#7a7672';
 
@@ -927,11 +1096,16 @@ function renderTL(){
     ctx.globalAlpha=isSel?1:.75;
     if(ann.end!==null&&x2-x1>3){
       ctx.fillStyle=gc; ctx.fillRect(x1,y+4,x2-x1,LANE-8);
+      if(/^(lean_in|touch|pass)_student_/.test(ann.gestureKey)){
+        ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;
+        ctx.strokeRect(x1+.5,y+4.5,x2-x1-1,LANE-9);
+      }
       if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.strokeRect(x1,y+4,x2-x1,LANE-8);}
       if(x2-x1>32){ctx.fillStyle='rgba(0,0,0,0.65)';ctx.font='9px IBM Plex Sans,sans-serif';ctx.textAlign='left';ctx.fillText(gestureShort(ann.gestureKey),x1+3,y+LANE/2+3);}
     } else {
       ctx.fillStyle=gc;
       ctx.beginPath();ctx.arc(x1,y+LANE/2,isSel?6:4,0,Math.PI*2);ctx.fill();
+      if(/^(lean_in|touch|pass)_student_/.test(ann.gestureKey)&&!isSel){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.stroke();}
       if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
     }
     ctx.globalAlpha=1;
@@ -1009,15 +1183,19 @@ tl.addEventListener('mousedown',e=>{
     if(tlDragWasPlaying) video.pause();
     sdot.classList.add('seg');
     tl.style.cursor='col-resize';
+    updateToolbox();
     startRaf();
   } else {
     video.currentTime=t;
+    tlDragWasPlaying=!video.paused;
+    if(tlDragWasPlaying) video.pause();
+    openPopup(t,null,e.clientX,e.clientY);
   }
 });
 window.addEventListener('mousemove',e=>{
   if(!tlDrag)return;
   const r=tl.getBoundingClientRect();
-  const x=Math.max(LPAD,Math.min(tl.width-RPAD,e.clientX-r.left));
+  const x=Math.max(LPAD,Math.min(tlW-RPAD,e.clientX-r.left));
   const t=xToT(x);
   tlMouseX=x; segEnd=t;
   if(Math.abs(t-lastScrubT)>1/FPS){video.currentTime=t;lastScrubT=t;}
@@ -1026,19 +1204,20 @@ window.addEventListener('mouseup',e=>{
   if(!tlDrag)return;
   tlDrag=false; sdot.classList.remove('seg'); tl.style.cursor='crosshair';
   const r=tl.getBoundingClientRect();
-  const upX=Math.max(LPAD,Math.min(tl.width-RPAD,e.clientX-r.left));
+  const upX=Math.max(LPAD,Math.min(tlW-RPAD,e.clientX-r.left));
   const endT=xToT(upX);
   const dragPx=Math.abs(upX-tToX(segStart));
   if(dragPx<4){
     // short click → point
     segStart=null; segEnd=null;
+    updateToolbox();
     video.currentTime=endT;
     if(tlDragWasPlaying) video.play();
     openPopup(endT,null,e.clientX,e.clientY);
   } else {
     const s=Math.min(segStart,endT), en=Math.max(segStart,endT);
     segStart=s; segEnd=en; video.currentTime=s;
-    updateSegHL(); renderTL();
+    updateSegHL(); renderTL(); updateToolbox();
     openPopup(s,en,e.clientX,e.clientY);
   }
 });
@@ -1060,6 +1239,7 @@ function closePopups(){
   segStart=null; segEnd=null; tlDrag=false;
   updateSegHL(); renderTL();
   sdot.classList.remove('seg');
+  updateToolbox();
   if(tlDragWasPlaying){video.play();tlDragWasPlaying=false;}
 }
 
@@ -1091,7 +1271,7 @@ function buildQuickPick(gridEl, items, onSelect){
 
   items.forEach((item,i)=>{
     const el=document.createElement('div');
-    el.className='qk';
+    el.className='qk'+(item.className?' '+item.className:'');
     el.style.borderColor=item.color+'44';
     el.innerHTML=`
       <div class="qk-dot" style="background:${item.color}"></div>
@@ -1116,6 +1296,23 @@ function buildQuickPick(gridEl, items, onSelect){
   };
 }
 
+function quickTargetItems(){
+  return [
+    ...targets.filter(t=>t.key.startsWith('student_')).slice(0,students.length),
+    ...targets.filter(t=>['manipulative','work_area','out_of_frame','shared_device','occluded/uncertain','teacher'].includes(t.key))
+  ].slice(0,8);
+}
+function fillTargetDropdown(selectEl){
+  selectEl.innerHTML='';
+  const grps={};
+  targets.forEach(t=>{(grps[t.group]=grps[t.group]||[]).push(t);});
+  Object.entries(grps).forEach(([g,items])=>{
+    const og=document.createElement('optgroup'); og.label=g;
+    items.forEach(t=>og.appendChild(new Option(t.name,t.key)));
+    selectEl.appendChild(og);
+  });
+}
+
 // ══ Gaze popup ═══════════════════════════════════════════════════════
 let pendingGaze=null, gpSelectedTarget=null, gazeQK=null;
 
@@ -1127,12 +1324,12 @@ function openGazePopup(start,end,px,py){
   // Gazer select
   const gs=document.getElementById('gp-gazer'); gs.innerHTML='';
   students.forEach(s=>{gs.appendChild(new Option(`student_${s}`,s));});
+  if(students.includes(lastGazeStudent)) gs.value=lastGazeStudent;
+  else lastGazeStudent=gs.value;
+  gs.onchange=()=>{lastGazeStudent=gs.value;};
 
   // Quick-pick: student faces + key shared targets
-  const qt=[
-    ...targets.filter(t=>t.key.startsWith('student_')).slice(0,students.length),
-    ...targets.filter(t=>['manipulative','work_area','out_of_frame','shared_device','occluded/uncertain','teacher'].includes(t.key))
-  ].slice(0,8);
+  const qt=quickTargetItems();
 
   const qkEl=document.getElementById('gp-quick');
   gazeQK=buildQuickPick(qkEl, qt, key=>{
@@ -1141,25 +1338,19 @@ function openGazePopup(start,end,px,py){
   });
 
   // Full dropdown
-  const td=document.getElementById('gp-target'); td.innerHTML='';
-  const grps={};
-  targets.forEach(t=>{(grps[t.group]=grps[t.group]||[]).push(t);});
-  Object.entries(grps).forEach(([g,items])=>{
-    const og=document.createElement('optgroup'); og.label=g;
-    items.forEach(t=>og.appendChild(new Option(t.name,t.key)));
-    td.appendChild(og);
-  });
-  td.addEventListener('change',()=>{
+  const td=document.getElementById('gp-target');
+  fillTargetDropdown(td);
+  td.onchange=()=>{
     gpSelectedTarget=td.value;
     // Sync quick-pick highlight
     const match=qt.find(t=>t.key===td.value);
     if(match) gazeQK.selectKey(td.value);
     else gazeQK.clear();
-  });
+  };
 
   document.getElementById('gp-note').value='';
   gazePopup.style.display='block';
-  posPopup(gazePopup,px,py,310,360);
+  posPopup(gazePopup,px,py,360,430);
   setTimeout(()=>gs.focus(),40);
 }
 
@@ -1168,6 +1359,7 @@ document.getElementById('gp-save').addEventListener('click',saveGaze);
 function saveGaze(){
   if(!pendingGaze)return;
   const gazer=document.getElementById('gp-gazer').value;
+  lastGazeStudent=gazer;
   const targetKey=gpSelectedTarget||document.getElementById('gp-target').value;
   const note=document.getElementById('gp-note').value.trim();
   const tgt=targets.find(t=>t.key===targetKey);
@@ -1180,25 +1372,59 @@ function saveGaze(){
 }
 
 // ══ Behavior popup ════════════════════════════════════════════════════
-let pendingGest=null, gp2SelectedType=null, gestQK=null;
+let pendingGest=null, gp2SelectedType=null, gp2SelectedTarget=null, gestQK=null, pointTargetQK=null;
+let socialQK=null, socialStudentQK=null, gp2SocialAction=null, gp2SocialStudent=null;
 
 function openGesturePopup(start,end,px,py){
   pendingGest={start,end};
   gp2SelectedType=null;
+  gp2SelectedTarget=null;
   document.getElementById('gp2-time').textContent=end?`${fmt(start)}–${fmt(end)}s`:`${fmt(start)}s`;
 
   // Student select
   const gs=document.getElementById('gp2-student'); gs.innerHTML='';
   students.forEach(s=>{gs.appendChild(new Option(`student_${s}`,s));});
+  if(students.includes(lastBehaviorStudent)) gs.value=lastBehaviorStudent;
+  else lastBehaviorStudent=gs.value;
+  gs.onchange=()=>{lastBehaviorStudent=gs.value;};
 
-  // Quick-pick: all behaviors (2-col grid)
-  const qt=GESTURES_STATIC.map(g=>({key:g.key, name:g.name, color:gestureColor(g.key)}));
+  // Quick-pick mirrors gaze: 8 high-use choices are visible, the full list stays in the dropdown.
+  const quickKeys=['write_draw','type_use_device','manipulate','point','raise_hand','head_nod','head_shake','mic_fidget'];
+  const qt=quickKeys.map(key=>GESTURES_STATIC.find(g=>g.key===key)).filter(Boolean).map(g=>({key:g.key, name:g.name, color:gestureColor(g.key), className:g.key==='point'?'qk-point':''}));
 
   const qkEl=document.getElementById('gp2-quick');
   gestQK=buildQuickPick(qkEl, qt, key=>{
     gp2SelectedType=key;
     document.getElementById('gp2-type').value=key;
+    if(socialQK){socialQK.clear();socialStudentQK.clear();}
+    gp2SocialAction=null; gp2SocialStudent=null;
+    document.getElementById('gp2-social-target-wrap').classList.remove('on');
+    updatePointTargetUI();
   });
+
+  const targetWrap=document.getElementById('gp2-point-target-wrap');
+  const targetQuick=quickTargetItems();
+  pointTargetQK=buildQuickPick(document.getElementById('gp2-point-quick'), targetQuick, key=>{
+    gp2SelectedTarget=key;
+    document.getElementById('gp2-target').value=key;
+  });
+  const targetSelect=document.getElementById('gp2-target');
+  fillTargetDropdown(targetSelect);
+  targetSelect.onchange=()=>{
+    gp2SelectedTarget=targetSelect.value;
+    const match=targetQuick.find(t=>t.key===targetSelect.value);
+    if(match) pointTargetQK.selectKey(targetSelect.value);
+    else pointTargetQK.clear();
+  };
+  function updatePointTargetUI(){
+    const isPoint=(document.getElementById('gp2-type').value==='point');
+    targetWrap.classList.toggle('on',isPoint);
+    if(isPoint&&!gp2SelectedTarget){
+      gp2SelectedTarget=targetSelect.value;
+      const match=targetQuick.find(t=>t.key===targetSelect.value);
+      if(match) pointTargetQK.selectKey(targetSelect.value);
+    }
+  }
 
   // Full dropdown (static + dynamic)
   const td=document.getElementById('gp2-type'); td.innerHTML='';
@@ -1210,16 +1436,57 @@ function openGesturePopup(start,end,px,py){
     GESTURES_DYNAMIC.forEach(g=>og2.appendChild(new Option(g.name,g.key)));
     td.appendChild(og2);
   }
-  td.addEventListener('change',()=>{
+  td.onchange=()=>{
     gp2SelectedType=td.value;
     const match=qt.find(g=>g.key===td.value);
     if(match) gestQK.selectKey(td.value);
     else gestQK.clear();
+    const dm=td.value.match(/^(lean_in|touch|pass)_student_(.+)$/);
+    const socialWrapEl=document.getElementById('gp2-social-target-wrap');
+    if(dm&&socialQK){
+      gp2SocialAction=dm[1]; gp2SocialStudent=dm[2];
+      socialQK.selectKey(dm[1]); socialStudentQK.selectKey(dm[2]);
+      socialWrapEl.classList.add('on');
+    } else if(socialQK){
+      gp2SocialAction=null; gp2SocialStudent=null;
+      socialQK.clear(); socialStudentQK.clear();
+      socialWrapEl.classList.remove('on');
+    }
+    updatePointTargetUI();
+  };
+
+  // ── Social (directed): lean / touch / pass with explicit target student ──
+  const socialWrap=document.getElementById('gp2-social-target-wrap');
+  gp2SocialAction=null; gp2SocialStudent=null;
+  const socialActions=[
+    {key:'lean_in', name:'Lean in', color:LEAN_COLOR},
+    {key:'touch',   name:'Touch',   color:TOUCH_COLOR},
+    {key:'pass',    name:'Pass',    color:PASS_COLOR}
+  ];
+  socialQK=buildQuickPick(document.getElementById('gp2-social'), socialActions, key=>{
+    gp2SocialAction=key;
+    socialWrap.classList.add('on');
+    gestQK.clear();                    // social replaces a plain behavior pick
+    targetWrap.classList.remove('on'); // hide point-target if open
+    applySocialSelection();
   });
+  const socialStudents=students.map(s=>({key:s, name:`s_${s}`, color:studentColor(s)}));
+  socialStudentQK=buildQuickPick(document.getElementById('gp2-social-students'), socialStudents, key=>{
+    gp2SocialStudent=key;
+    applySocialSelection();
+  });
+  function applySocialSelection(){
+    if(!gp2SocialAction||!gp2SocialStudent)return;
+    const dynKey=`${gp2SocialAction}_student_${gp2SocialStudent}`;
+    gp2SelectedType=dynKey;
+    document.getElementById('gp2-type').value=dynKey;
+  }
+  socialWrap.classList.remove('on');
 
   document.getElementById('gp2-note').value='';
+  targetWrap.classList.remove('on');
   gestPopup.style.display='block';
-  posPopup(gestPopup,px,py,310,420);
+  posPopup(gestPopup,px,py,380,560);
   setTimeout(()=>gs.focus(),40);
 }
 
@@ -1227,14 +1494,22 @@ document.getElementById('gp2-cancel').addEventListener('click',closePopups);
 document.getElementById('gp2-save').addEventListener('click',saveGesture);
 function saveGesture(){
   if(!pendingGest)return;
+  // Social pick needs both halves: action + directed-at student
+  if(gp2SocialAction&&!gp2SocialStudent){
+    setStatus('Pick who the '+gp2SocialAction.replace('_',' ')+' is directed at.');
+    return;
+  }
   const student=document.getElementById('gp2-student').value;
+  lastBehaviorStudent=student;
   const gKey=gp2SelectedType||document.getElementById('gp2-type').value;
   const note=document.getElementById('gp2-note').value.trim();
-  gestureAnns.push({id:gestId++,student,studentColor:studentColor(student),gestureKey:gKey,gestureName:gestureName(gKey),gestureColor:gestureColor(gKey),start:pendingGest.start,end:pendingGest.end,note,createdAt:new Date().toISOString()});
+  const targetKey=gKey==='point'?(gp2SelectedTarget||document.getElementById('gp2-target').value):'';
+  const target=targetKey?targets.find(t=>t.key===targetKey):null;
+  gestureAnns.push({id:gestId++,student,studentColor:studentColor(student),gestureKey:gKey,gestureName:gestureName(gKey),gestureColor:gestureColor(gKey),pointTargetKey:target?.key||'',pointTargetName:target?.name||'',pointTargetShort:target?.short||'',pointTargetColor:target?.color||'',start:pendingGest.start,end:pendingGest.end,note,createdAt:new Date().toISOString()});
   selectedGest=gestureAnns[gestureAnns.length-1].id;
   closePopups();
   renderGestList();renderTL();
-  setStatus(`✓ student_${student}: ${gestureName(gKey)}`);
+  setStatus(target?`✓ student_${student}: Point → ${target.name}`:`✓ student_${student}: ${gestureName(gKey)}`);
 }
 
 // ══ Gaze list ═════════════════════════════════════════════════════════
@@ -1311,13 +1586,15 @@ function renderGestList(){
     d.className='ann-item'+(ann.id===selectedGest?' sel-gest':'');
     const rng=ann.end?`${fmt(ann.start)}–${fmt(ann.end)}s`:`${fmt(ann.start)}s`;
     const gc=ann.gestureColor;
+    const label=ann.gestureKey==='point'&&ann.pointTargetName?`Point → ${ann.pointTargetShort||ann.pointTargetName}`:gestureShort(ann.gestureKey);
+    const title=ann.gestureKey==='point'&&ann.pointTargetName?`${ann.gestureName}: ${ann.pointTargetName}`:ann.gestureName;
     d.innerHTML=`
       <div class="ann-top">
         <div class="adot" style="background:${ann.studentColor}"></div>
         <span class="ann-who">s_${esc(ann.student)}</span>
         <span class="ann-arr">·</span>
         <div class="asq" style="background:${gc}"></div>
-        <span class="ann-what" title="${esc(ann.gestureName)}">${esc(gestureShort(ann.gestureKey))}</span>
+        <span class="ann-what" title="${esc(title)}">${esc(label)}</span>
       </div>
       <div class="ann-bot">
         <span class="ann-time">${rng}</span>
@@ -1375,10 +1652,10 @@ document.getElementById('btn-gest-json').addEventListener('click',()=>{
   setStatus(`Exported ${gestureAnns.length} gesture annotations as JSON`);
 });
 document.getElementById('btn-gest-csv').addEventListener('click',()=>{
-  const rows=['id,student,gesture_key,gesture_name,start,end,duration,note,created_at'];
+  const rows=['id,student,gesture_key,gesture_name,point_target_key,point_target_name,start,end,duration,note,created_at'];
   gestureAnns.sort((a,b)=>a.start-b.start).forEach(a=>{
     const d=a.end!==null?(a.end-a.start).toFixed(3):'';
-    rows.push([a.id,`"student_${a.student}"`,`"${a.gestureKey}"`,`"${a.gestureName}"`,a.start.toFixed(3),a.end!=null?a.end.toFixed(3):'',d,`"${(a.note||'').replace(/"/g,'""')}"`,a.createdAt||''].join(','));
+    rows.push([a.id,`"student_${a.student}"`,`"${a.gestureKey}"`,`"${a.gestureName}"`,`"${a.pointTargetKey||''}"`,`"${a.pointTargetName||''}"`,a.start.toFixed(3),a.end!=null?a.end.toFixed(3):'',d,`"${(a.note||'').replace(/"/g,'""')}"`,a.createdAt||''].join(','));
   });
   dl(`${sessionName}_gesture.csv`,rows.join('\n'),'text/csv');
   setStatus(`Exported ${gestureAnns.length} gesture annotations as CSV`);
@@ -1395,7 +1672,11 @@ document.getElementById('j-import').addEventListener('change',e=>{
   r.onload=ev=>{
     try{
       const d=JSON.parse(ev.target.result);
-      if(d.students)students=d.students;
+      if(d.students){
+        students=d.students;
+        if(!students.includes(lastGazeStudent)) lastGazeStudent=students[0]||'';
+        if(!students.includes(lastBehaviorStudent)) lastBehaviorStudent=students[0]||'';
+      }
       if(d.targets)targets=d.targets;else targets=buildTargets(students);
       if(d.sessionName){sessionName=d.sessionName;document.getElementById('sess-badge').textContent=sessionName;}
       if(d.gazeAnnotations){gazeAnns=d.gazeAnnotations;gId=Math.max(...gazeAnns.map(a=>a.id),-1)+1;}
@@ -1435,9 +1716,12 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Enter'){saveGaze();return;}
     return;
   }
-  // Number keys in behavior popup → quick select type
+  // Number keys in behavior popup → quick select type / point target / social student
   if(gestPopup.style.display!=='none'){
     const i=parseInt(e.key)-1;
+    const socialOn=document.getElementById('gp2-social-target-wrap').classList.contains('on');
+    if(i>=0&&socialOn&&socialStudentQK){socialStudentQK.selectByIndex(i);return;}
+    if(i>=0&&gp2SelectedType==='point'&&pointTargetQK){pointTargetQK.selectByIndex(i);return;}
     if(i>=0&&gestQK){gestQK.selectByIndex(i);return;}
     if(e.key==='Enter'){saveGesture();return;}
     return;
@@ -1459,11 +1743,11 @@ document.addEventListener('keydown',e=>{
         if(segStart===null){
           segStart=video.currentTime;segEnd=null;sdot.classList.add('seg');
           setStatus(`Start: ${fmt(segStart)}s — press A again to set end`);
-          updateSegHL();renderTL();
+          updateSegHL();renderTL();updateToolbox();
         } else {
           segEnd=video.currentTime;
           if(segEnd<segStart)[segStart,segEnd]=[segEnd,segStart];
-          updateSegHL();renderTL();
+          updateSegHL();renderTL();updateToolbox();
           openPopup(segStart,segEnd,window.innerWidth/2,window.innerHeight/2-80);
           sdot.classList.remove('seg');
         }
