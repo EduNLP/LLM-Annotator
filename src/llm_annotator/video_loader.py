@@ -43,6 +43,8 @@ def _time_to_sec(t: str) -> float:
 
 # Matches lines like:  a 3:51-5:35 warm-up
 #                      b 10:57-11:49
+_INTRO_LINE = re.compile(r"^\s*intro\s+", re.IGNORECASE)
+
 _SEGMENT_LINE = re.compile(
     r"^\s*([a-z])\s+"           # segment letter
     r"(\d{1,2}:\d{2}(?::\d{2})?)"  # start time
@@ -86,6 +88,9 @@ def parse_segment_timestamps(text: str) -> SegmentMap:
         vid_match = _VID_HEADER.match(line)
         if vid_match:
             current_video = int(vid_match.group(1))
+            continue
+
+        if _INTRO_LINE.match(line):
             continue
 
         seg_match = _SEGMENT_LINE.match(line)
