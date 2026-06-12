@@ -81,11 +81,7 @@ def get_clip_path_for_row(row, clip_base_dir: str) -> Optional[str]:
         line = str(int(line)) if isinstance(line, (int, float)) else str(line)
         seg_id = row.get("segment_id_1sd", "")
         seg_label = seg_id.split("_segment_")[-1] if "_segment_" in str(seg_id) else str(seg_id)
-        if seg_label.isdigit():
-            seg_letter = chr(ord("a") + int(seg_label) - 1) if 1 <= int(seg_label) <= 26 else seg_label
-        else:
-            seg_letter = seg_label
-        path = os.path.join(clip_base_dir, obsid, f"{obsid}_{seg_letter}_{line}.mp4")
+        path = os.path.join(clip_base_dir, obsid, f"{obsid}_{seg_label}_{line}.mp4")
         return path if os.path.isfile(path) else None
     except (TypeError, ValueError, KeyError):
         return None
