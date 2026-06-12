@@ -15,12 +15,14 @@ from llm_annotator.preprocess import pre_process_transcript, filter_by_feature_r
 from llm_annotator.cost import estimate_cost
 from llm_annotator.main import annotate, resume, fetch
 from llm_annotator.session_lock import acquire_lock, release_lock
+from llm_annotator.formatter import format_multiple, verify_alignment, print_alignment_report
 
 
 def run_pipeline(
     config: ExperimentConfig,
     results_sheet_id: str = "",
     validation_path: str = "",
+    tracker_sheet_id: str = "",
     gc=None,
     verbose: bool = True,
     user: str = "",
@@ -49,14 +51,54 @@ def run_pipeline(
             return pd.DataFrame()
 
     try:
-        return _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log)
+        return _run_inner(config, results_sheet_id, validation_path, tracker_sheet_id, gc, verbose, _log)
     finally:
         if results_sheet_id and gc:
             release_lock(gc, results_sheet_id)
 
 
-def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
-    # ── 1. Cost estimate ──
+def _run_inner(config, results_sheet_id, validation_path, tracker_sheet_id, gc, verbose, _log):
+    # ── 1. Format from Tracker (always runs) ──
+    if tracker_sheet_id and gc:
+        _log("\n── Formatting transcripts from Tracker ──")
+        obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
+        if obs_ids:
+            save_dir = os.path.join(config.save_dir, "formatted")
+            formatted_df = format_multiple(gc, obs_ids, tracker_sheet_id, save_dir=save_dir)
+
+            if not formatted_df.empty:
+                # Use formatted output as transcript source
+                combined_path = os.path.join(save_dir, "mol_formatted_combined.csv")
+                if os.path.exists(combined_path):
+                    config.transcript_source = combined_path
+                    _log(f"  Using formatted transcript: {combined_path}")
+
+                # Alignment check if validation set provided
+                if validation_path and os.path.exists(validation_path):
+                    _log("\n── Alignment Check ──")
+                    val_df = pd.read_csv(validation_path)
+                    result = verify_alignment(formatted_df, val_df)
+                    print_alignment_report(result)
+                    if result.get("aligned") is False:
+                        _log("  ⚠️  Alignment issues detected — review before proceeding")
+        else:
+            _log("  No specific obs IDs selected, skipping formatter")
+    else:
+        _log("  No tracker_sheet_id or gc — skipping formatter (using transcript_source as-is)")
+
+    # ── Evaluate-only mode ──
+    if config.evaluate_only:
+        _log("\n── Evaluate-only mode ──")
+        results_df = pd.DataFrame()
+        if validation_path and os.path.exists(validation_path):
+            results_df = _evaluate(config, validation_path, verbose)
+        else:
+            print("  ⚠️  evaluate_only=True but no validation_path provided")
+        if results_sheet_id and gc and not results_df.empty:
+            _log_to_sheets(results_df, results_sheet_id, gc, verbose)
+        return results_df
+
+    # ── 2. Cost estimate ──
     _log("Loading data...")
     dl = DataLoader(sheet_source=config.sheet_source, transcript_source=config.transcript_source)
     _, transcript_df = pre_process_transcript(dl.transcript_df, config.obs_list)
@@ -69,7 +111,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
     print("\n── Cost Estimate ──")
     cost_estimates = estimate_cost(config, transcript_df, feature_dict)
 
-    # ── 2. Annotate ──
+    # ── 3. Annotate ──
     start_ts = datetime.utcnow().isoformat()
     _log(f"\nStarted: {start_ts}")
 

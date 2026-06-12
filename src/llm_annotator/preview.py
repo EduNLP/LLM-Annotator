@@ -121,10 +121,33 @@ def preview_pipeline(
     elif validation_path:
         print(f"\n── 6. Validation ── file not found: {validation_path}\n")
 
-    # ── 7. Step plan ──
-    print(f"\n── 7. Pipeline Steps ──\n")
+    # ── 7. Formatter + alignment ──
+    if tracker_sheet_id:
+        print(f"\n── 7. Formatter (always runs from Tracker) ──\n")
+        print(f"  Will format deidentified transcripts for obs: {', '.join(obs_ids[:10])}")
+        if validation_path and os.path.exists(validation_path):
+            print(f"  Will verify alignment against: {os.path.basename(validation_path)}")
+
+    # ── 8. Step plan ──
+    print(f"\n── 8. Pipeline Steps ──\n")
     steps = [
-        ("Load data", f"transcript ({len(transcript_df)} rows) + feature sheet"),
+        ("Format transcript", f"Tracker → deidentified → formatted CSV for {len(obs_ids)} obs"),
+    ]
+
+    if validation_path:
+        steps.append(("Verify alignment", f"check formatted rows match {os.path.basename(validation_path)}"))
+
+    if config.evaluate_only:
+        steps.append(("Evaluate only", f"compare previous run to validation (no annotation)"))
+        for i, (name, detail) in enumerate(steps, 1):
+            print(f"  {i:2d}. {name:<20s} → {detail}")
+        print(f"\n{'=' * 70}")
+        print(f"  Ready to run (evaluate-only mode).")
+        print(f"{'=' * 70}\n")
+        return
+
+    steps += [
+        ("Load features", f"feature sheet + rules"),
         ("Pre-process", f"filter to {len(obs_ids)} obs, assign roles"),
     ]
 

@@ -109,6 +109,10 @@ class ExperimentConfig:
     # e.g. {"gpt-4o": "batch_abc123"}
     resume_batch_ids: dict = field(default_factory=dict)
 
+    # When True, skip annotation entirely — just evaluate a previous run's
+    # output against the validation set.
+    evaluate_only: bool = False
+
     # Prompt paths (use package defaults if empty)
     system_prompt_path: str = "data/prompts/system_prompt.txt"
     prompt_path: str = ""

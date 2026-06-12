@@ -159,6 +159,7 @@ class ConfigUI:
         self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=STYLE)
         self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=STYLE)
         self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=STYLE)
+        self.evaluate_only = widgets.Checkbox(value=False, description="Evaluate only (skip annotation, compare previous run to validation)", style=STYLE)
 
         # ── Feature rules (collapsible) ──
         self.filter_if_text = widgets.Textarea(
@@ -240,7 +241,7 @@ class ConfigUI:
         display(self.n_uttr, self.bwd, self.fwd)
 
         display(HTML("<b>Run options</b>"))
-        display(self.test_mode, self.wait, self.use_video, self.verbose, self.resume_mode)
+        display(self.test_mode, self.wait, self.use_video, self.verbose, self.resume_mode, self.evaluate_only)
 
         rules_accordion = widgets.Accordion(children=[
             widgets.VBox([
@@ -287,6 +288,7 @@ class ConfigUI:
             if_wait=self.wait.value,
             use_video=self.use_video.value,
             save_dir=self.save_dir.value,
+            evaluate_only=self.evaluate_only.value,
             resume_batch_ids=_parse_dict(self.resume_text.value),
             filter_if=_parse_list_dict(self.filter_if_text.value),
             linked_with=_parse_list_dict(self.linked_with_text.value),
