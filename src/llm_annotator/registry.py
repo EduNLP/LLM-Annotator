@@ -25,7 +25,8 @@ def simple_llm_pipe(model_list: List[str],
                     bwd_context_count: int = 0,
                     annotation_prompt_path: str = "",
                     clip_base_dir: str = "",
-                    use_video: bool = False):
+                    use_video: bool = False,
+                    filter_if_override: list = None):
     dataloader = DataLoader(sheet_source=sheet_source,
                             transcript_source=transcript_source)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
@@ -36,14 +37,15 @@ def simple_llm_pipe(model_list: List[str],
     pipe.add_pipe(name="load_feature", idx=1)
     pipe.add_pipe(name="generate_features", idx=2)
     pipe.add_pipe(name="pre-process", idx=3)
-    pipe.add_pipe(name="build_examples", idx=4)
-    pipe.add_pipe(name="build_system_prompt", idx=5)
-    pipe.add_pipe(name="build_user_prompt", idx=6)
-    pipe.add_pipe(name="process_observations", idx=7)
-    pipe.add_pipe(name="process_requests", idx=8)
+    pipe.add_pipe(name="filter-by-rules", idx=4)
+    pipe.add_pipe(name="build_examples", idx=5)
+    pipe.add_pipe(name="build_system_prompt", idx=6)
+    pipe.add_pipe(name="build_user_prompt", idx=7)
+    pipe.add_pipe(name="process_observations", idx=8)
+    pipe.add_pipe(name="process_requests", idx=9)
     if if_wait:
-        pipe.add_pipe(name="fetch_batch", idx=9)
-        pipe.add_pipe(name="save_results", idx=10)
+        pipe.add_pipe(name="fetch_batch", idx=10)
+        pipe.add_pipe(name="save_results", idx=11)
 
     return pipe
 

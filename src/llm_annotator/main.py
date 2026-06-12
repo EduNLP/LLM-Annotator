@@ -39,6 +39,7 @@ def annotate(
         bwd_context_count: int = 0,  # Defaults to 0 (no backward context)
         clip_base_dir: str = "",  # Drive folder with per-line clips: {clip_base_dir}/{obsid}/{obsid}_{seg}_{line}.mp4
         use_video: bool = False,  # If True and clip_base_dir set, attach video clips for Gemini
+        filter_if_override: list = None,
 ):
     pipe = simple_llm_pipe(model_list=model_list,
                            obs_list=obs_list,
@@ -55,7 +56,8 @@ def annotate(
                            fwd_context_count=fwd_context_count,
                            bwd_context_count=bwd_context_count,
                            clip_base_dir=clip_base_dir,
-                           use_video=use_video)
+                           use_video=use_video,
+                           filter_if_override=filter_if_override)
     pipe()
 
 

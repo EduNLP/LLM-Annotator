@@ -79,7 +79,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
         # Apply feature rule overrides
         rules = config.get_feature_rules(feature, feature_dict.get(feature))
         if rules["filter_if"]:
-            _log(f"  Filtering rows where {rules['filter_if']} == 1")
+            _log(f"  Will filter rows where {rules['filter_if']} == 1")
 
         if config.resume_batch_ids:
             resume(
@@ -102,6 +102,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
                 save_dir=config.save_dir,
                 bwd_context_count=config.bwd_context_count,
                 fwd_context_count=config.fwd_context_count,
+                filter_if_override=rules["filter_if"] if rules["filter_if"] else None,
                 use_video=config.use_video,
             )
 

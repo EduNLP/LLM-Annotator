@@ -59,3 +59,14 @@ def filter_by_feature_rules(df: pd.DataFrame, feature_meta: Dict) -> pd.DataFram
     if n_dropped:
         print(f"[filter_by_feature_rules] Dropped {n_dropped} rows where {filter_codes} == 1.")
     return df[~mask].copy()
+
+
+@utils.component("filter-by-rules")
+def apply_feature_filter(transcript_df: pd.DataFrame, feature_dict: Dict, feature: str,
+                         filter_if_override: list = None) -> tuple:
+    """Pipeline component: filter transcript_df using the feature's filter_if rules."""
+    meta = feature_dict.get(feature, {})
+    if filter_if_override is not None:
+        meta = dict(meta)
+        meta["filter_if"] = filter_if_override
+    return "transcript_df", filter_by_feature_rules(transcript_df, meta)
