@@ -1,19 +1,21 @@
 """Colab widget UI for experiment configuration.
 
+Auto-populates features from the MOL Roles Features sheet and validation
+files from Drive. New sheet tabs (e.g. Multimodal) appear automatically.
+
 Usage:
     from llm_annotator.ui import show_config_ui
-    ui = show_config_ui()
-    # User fills in widgets, then:
+    ui = show_config_ui(gc=gc, drive_base=DRIVE_BASE, sheets=SHEETS)
     config = ui.build_config()
-    run_pipeline(config, ...)
 """
 
+import os
+import glob
 import ipywidgets as widgets
 from IPython.display import display, HTML
 from llm_annotator.config import ExperimentConfig
 
 
-# Available models grouped by provider
 MODEL_OPTIONS = [
     "gpt-4o", "gpt-5-nano", "gpt-5-mini", "gpt-5.1", "gpt-5.2",
     "claude-3-5",
@@ -21,38 +23,120 @@ MODEL_OPTIONS = [
     "gemini-3-flash-preview", "gemini-3-pro-preview",
 ]
 
-FEATURE_OPTIONS = [
-    "Offtask", "Recording", "Directions", "Coordinate",
-    "Competent", "Language", "Understanding", "Tool",
-    "claim", "reason", "agree", "disagree", "compare",
-    "addon", "question", "revoice", "monitor", "nextstep",
-    "redirect", "compliment", "apology",
-]
-
 STYLE = {"description_width": "180px"}
 LAYOUT = widgets.Layout(width="600px")
 NARROW = widgets.Layout(width="300px")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Dynamic data loaders
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _load_feature_options(gc, features_sheet_id: str) -> list[tuple[str, str]]:
+    """Read feature codes from all tabs. Returns [(code, tab_name), ...]."""
+    if not gc or not features_sheet_id:
+        return []
+    try:
+        spreadsheet = gc.open_by_key(features_sheet_id)
+        results = []
+        for ws in spreadsheet.worksheets():
+            data = ws.get_all_values()
+            if len(data) < 2:
+                continue
+            headers = data[0]
+            code_idx = next((i for i, h in enumerate(headers) if h.strip().lower() == "code"), None)
+            if code_idx is None:
+                continue
+            for row in data[1:]:
+                if code_idx < len(row) and row[code_idx].strip():
+                    results.append((row[code_idx].strip(), ws.title))
+        return results
+    except Exception as e:
+        print(f"[ui] Could not load features from sheet: {e}")
+        return []
+
+
+def _find_validation_csvs(drive_base: str) -> list[str]:
+    """Find CSV files in the pipeline outputs folder."""
+    search_dir = os.path.join(drive_base, "MOL Conceptual Pipeline Outputs")
+    if not os.path.isdir(search_dir):
+        return []
+    csvs = sorted(glob.glob(os.path.join(search_dir, "*.csv")))
+    return csvs
+
+
+def _load_obsids_from_csv(path: str) -> list[str]:
+    """Read unique obsids from a CSV file."""
+    try:
+        import pandas as pd
+        df = pd.read_csv(path, usecols=["obsid"])
+        return sorted(df["obsid"].dropna().astype(str).unique().tolist())
+    except Exception:
+        return []
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Config UI
+# ═══════════════════════════════════════════════════════════════════════════
+
 class ConfigUI:
-    def __init__(self, drive_base=""):
+    def __init__(self, drive_base="", gc=None, sheets=None):
         self.drive_base = drive_base
+        self.gc = gc
+        self.sheets = sheets or {}
+        self._feature_tab_map = {}  # code → tab name
+
+        # ── Load dynamic options ──
+        feat_pairs = _load_feature_options(gc, self.sheets.get("features_definitions", ""))
+        if feat_pairs:
+            feature_codes = [code for code, _ in feat_pairs]
+            self._feature_tab_map = {code: tab for code, tab in feat_pairs}
+            # Group labels: "Directions (Conceptual)"
+            feature_labels = [f"{code} ({tab})" for code, tab in feat_pairs]
+        else:
+            feature_codes = [
+                "Offtask", "Recording", "Directions", "Coordinate",
+                "Competent", "Language", "Understanding", "Tool",
+                "claim", "reason", "agree", "disagree", "compare",
+                "addon", "question", "revoice", "monitor", "nextstep",
+                "redirect", "compliment", "apology",
+            ]
+            feature_labels = feature_codes
+        self._feature_codes = feature_codes
+
+        val_csvs = _find_validation_csvs(drive_base)
+        val_options = [(os.path.basename(p), p) for p in val_csvs]
+        self._obsid_cache = {}
+
+        # ── Validation file selector ──
+        self.validation_file = widgets.Dropdown(
+            options=[("(none)", "")] + val_options,
+            value="",
+            description="Validation CSV",
+            style=STYLE, layout=LAYOUT,
+        )
+        self.validation_file.observe(self._on_validation_change, names="value")
+
+        # ── Obs IDs (auto-populated from validation CSV) ──
+        self.obs_list = widgets.SelectMultiple(
+            options=[], description="Observation IDs",
+            style=STYLE, layout=LAYOUT, rows=8,
+        )
+        self.obs_all = widgets.Checkbox(
+            value=False, description="Run all observations",
+            style=STYLE,
+        )
+        self.obs_all.observe(self._on_obs_all_change, names="value")
 
         # ── Core ──
         self.models = widgets.SelectMultiple(
             options=MODEL_OPTIONS, value=["gpt-5-mini"],
-            description="Models", style=STYLE, layout=LAYOUT,
-            rows=6,
+            description="Models", style=STYLE, layout=LAYOUT, rows=6,
         )
         self.features = widgets.SelectMultiple(
-            options=FEATURE_OPTIONS, value=["Directions", "Coordinate"],
-            description="Features", style=STYLE, layout=LAYOUT,
-            rows=8,
-        )
-        self.obs_list = widgets.Text(
-            value="17, 25", description="Obs IDs (or 'all')",
-            style=STYLE, layout=LAYOUT,
-            placeholder="17, 25, 195  or  all",
+            options=list(zip(feature_labels, feature_codes)),
+            value=["Directions", "Coordinate"] if "Directions" in feature_codes else feature_codes[:2],
+            description="Features", style=STYLE, layout=LAYOUT, rows=min(10, len(feature_codes)),
         )
 
         # ── Prompt ──
@@ -70,22 +154,11 @@ class ConfigUI:
         )
 
         # ── Run control ──
-        self.test_mode = widgets.Checkbox(
-            value=True, description="Test mode (~20 rows)",
-            style=STYLE,
-        )
-        self.wait = widgets.Checkbox(
-            value=False, description="Wait for batch to complete",
-            style=STYLE,
-        )
-        self.use_video = widgets.Checkbox(
-            value=False, description="Include video (Gemini only)",
-            style=STYLE,
-        )
-        self.verbose = widgets.Checkbox(
-            value=True, description="Show detailed logs",
-            style=STYLE,
-        )
+        self.test_mode = widgets.Checkbox(value=True, description="Test mode (~20 rows)", style=STYLE)
+        self.wait = widgets.Checkbox(value=False, description="Wait for batch to complete", style=STYLE)
+        self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=STYLE)
+        self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=STYLE)
+        self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=STYLE)
 
         # ── Feature rules (collapsible) ──
         self.filter_if_text = widgets.Textarea(
@@ -121,13 +194,13 @@ class ConfigUI:
             style=STYLE, layout=widgets.Layout(width="600px", height="50px"),
         )
 
-        # ── Data sources (usually don't change) ──
+        # ── Data sources ──
         self.transcript_source = widgets.Text(
             value=drive_base + "/MOL Conceptual Pipeline Outputs/mol_formatted_data.csv" if drive_base else "",
             description="Transcript source", style=STYLE, layout=LAYOUT,
         )
         self.sheet_source = widgets.Text(
-            value="1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc",
+            value=self.sheets.get("features", "1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc"),
             description="Feature sheet ID", style=STYLE, layout=LAYOUT,
         )
         self.save_dir = widgets.Text(
@@ -135,18 +208,39 @@ class ConfigUI:
             description="Save directory", style=STYLE, layout=LAYOUT,
         )
 
+    def _on_validation_change(self, change):
+        path = change["new"]
+        if not path:
+            self.obs_list.options = []
+            return
+        if path not in self._obsid_cache:
+            self._obsid_cache[path] = _load_obsids_from_csv(path)
+        obsids = self._obsid_cache[path]
+        self.obs_list.options = obsids
+        if obsids:
+            self.obs_list.value = [obsids[0]]
+
+    def _on_obs_all_change(self, change):
+        if change["new"]:
+            self.obs_list.disabled = True
+        else:
+            self.obs_list.disabled = False
+
     def display(self):
-        """Show the config UI."""
-        display(HTML("<h3>Experiment Config</h3>"))
+        display(HTML("<h3>🔬 Experiment Config</h3>"))
+
+        display(HTML("<b>Data source</b>"))
+        display(self.validation_file)
+        display(widgets.HBox([self.obs_list, widgets.VBox([self.obs_all])]))
 
         display(HTML("<b>What to run</b>"))
-        display(self.models, self.features, self.obs_list)
+        display(self.models, self.features)
 
         display(HTML("<b>Prompt settings</b>"))
         display(self.n_uttr, self.bwd, self.fwd)
 
         display(HTML("<b>Run options</b>"))
-        display(self.test_mode, self.wait, self.use_video, self.verbose)
+        display(self.test_mode, self.wait, self.use_video, self.verbose, self.resume_mode)
 
         rules_accordion = widgets.Accordion(children=[
             widgets.VBox([
@@ -159,7 +253,7 @@ class ConfigUI:
             ]),
         ])
         rules_accordion.set_title(0, "Feature rule overrides (optional)")
-        rules_accordion.selected_index = None  # collapsed by default
+        rules_accordion.selected_index = None
         display(rules_accordion)
 
         advanced = widgets.Accordion(children=[
@@ -175,12 +269,10 @@ class ConfigUI:
         display(advanced)
 
     def build_config(self) -> ExperimentConfig:
-        """Build ExperimentConfig from current widget values."""
-        obs = self.obs_list.value.strip()
-        if obs.lower() == "all":
+        if self.obs_all.value:
             obs_list = "all"
         else:
-            obs_list = [o.strip() for o in obs.split(",") if o.strip()]
+            obs_list = list(self.obs_list.value) if self.obs_list.value else "all"
 
         return ExperimentConfig(
             model_list=list(self.models.value),
@@ -203,9 +295,11 @@ class ConfigUI:
             extra_context=_parse_dict(self.extra_context_text.value),
         )
 
+    def get_validation_path(self) -> str:
+        return self.validation_file.value or ""
+
 
 def _parse_dict(text: str) -> dict:
-    """Parse 'key: value' lines into a dict."""
     result = {}
     for line in text.strip().splitlines():
         if ":" not in line:
@@ -216,7 +310,6 @@ def _parse_dict(text: str) -> dict:
 
 
 def _parse_list_dict(text: str) -> dict:
-    """Parse 'key: val1, val2' lines into {key: [val1, val2]}."""
     result = {}
     for line in text.strip().splitlines():
         if ":" not in line:
@@ -226,8 +319,8 @@ def _parse_list_dict(text: str) -> dict:
     return result
 
 
-def show_config_ui(drive_base="") -> ConfigUI:
-    """Create and display the config UI. Returns the UI object to call build_config() on."""
-    ui = ConfigUI(drive_base=drive_base)
+def show_config_ui(drive_base="", gc=None, sheets=None) -> ConfigUI:
+    """Create and display the config UI. Returns the UI object."""
+    ui = ConfigUI(drive_base=drive_base, gc=gc, sheets=sheets)
     ui.display()
     return ui
