@@ -14,6 +14,7 @@ from llm_annotator.dataloader import DataLoader, generate_features
 from llm_annotator.preprocess import pre_process_transcript, filter_by_feature_rules
 from llm_annotator.cost import estimate_cost
 from llm_annotator.main import annotate, resume, fetch
+from llm_annotator.session_lock import acquire_lock, release_lock
 
 
 def run_pipeline(
@@ -22,6 +23,8 @@ def run_pipeline(
     validation_path: str = "",
     gc=None,
     verbose: bool = True,
+    user: str = "",
+    force_lock: bool = False,
 ):
     """Run the full annotation pipeline from config.
 
@@ -40,6 +43,19 @@ def run_pipeline(
     """
     _log = print if verbose else lambda *a, **k: None
 
+    # ── 0. Acquire lock ──
+    if results_sheet_id and gc:
+        if not acquire_lock(gc, results_sheet_id, user=user or "anonymous", force=force_lock):
+            return pd.DataFrame()
+
+    try:
+        return _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log)
+    finally:
+        if results_sheet_id and gc:
+            release_lock(gc, results_sheet_id)
+
+
+def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
     # ── 1. Cost estimate ──
     _log("Loading data...")
     dl = DataLoader(sheet_source=config.sheet_source, transcript_source=config.transcript_source)
