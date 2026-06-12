@@ -87,7 +87,7 @@ class ConfigUI:
         self._feature_tab_map = {}  # code → tab name
 
         # ── Load dynamic options ──
-        feat_pairs = _load_feature_options(gc, self.sheets.get("features_definitions", ""))
+        feat_pairs = _load_feature_options(gc, self.sheets.get("feature_definitions", ""))
         if feat_pairs:
             feature_codes = [code for code, _ in feat_pairs]
             self._feature_tab_map = {code: tab for code, tab in feat_pairs}
@@ -201,7 +201,7 @@ class ConfigUI:
             description="Transcript source", style=STYLE, layout=LAYOUT,
         )
         self.sheet_source = widgets.Text(
-            value=self.sheets.get("features", "1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc"),
+            value=self.sheets.get("feature_metadata", "1miMC8M_UkfY_3XhglTAdt9sC9H8D6d9slzC7_LgcLOc"),
             description="Feature sheet ID", style=STYLE, layout=LAYOUT,
         )
         self.save_dir = widgets.Text(

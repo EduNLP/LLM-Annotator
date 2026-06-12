@@ -2,6 +2,7 @@ import inspect
 import functools
 import catalogue
 import os
+import re
 import datetime
 import json
 
@@ -270,6 +271,19 @@ def load_meta_file(timestamp: str, feature: str, save_dir: str):
         except:
             raise FileNotFoundError("Cannot find metadata.json.")
     return metadata
+
+
+def sheet_id_from_url(url_or_id: str) -> str:
+    """Extract a Google Sheet ID from a full URL or return as-is if already an ID."""
+    m = re.search(r"/d/([a-zA-Z0-9_-]+)", url_or_id)
+    return m.group(1) if m else url_or_id
+
+
+def load_sheets_config(path: str) -> dict:
+    """Load sheets.json and resolve all values to sheet IDs."""
+    with open(path) as f:
+        raw = json.load(f)
+    return {key: sheet_id_from_url(val) for key, val in raw.items()}
 
 
 def create_batch_dir(save_dir: str, feature: str, timestamp: str):
