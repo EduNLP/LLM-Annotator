@@ -125,6 +125,13 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
         if rules["filter_if"]:
             _log(f"  Will filter rows where {rules['filter_if']} == 1")
 
+        # Resolve extra context for this feature
+        ctx_key = rules.get("extra_context_type", "")
+        extra_text = ""
+        if ctx_key and ctx_key in config.extra_context:
+            extra_text = f"\n\nAdditional Context:\n{config.extra_context[ctx_key]}\n"
+            _log(f"  Injecting extra context: {ctx_key} ({len(config.extra_context[ctx_key])} chars)")
+
         if config.resume_batch_ids:
             resume(
                 feature=feature,
@@ -148,6 +155,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
                 fwd_context_count=config.fwd_context_count,
                 filter_if_override=rules["filter_if"] if rules["filter_if"] else None,
                 use_video=config.use_video,
+                extra_context_text=extra_text,
             )
 
     finish_ts = datetime.utcnow().isoformat()

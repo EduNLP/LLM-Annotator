@@ -26,7 +26,8 @@ def simple_llm_pipe(model_list: List[str],
                     annotation_prompt_path: str = "",
                     clip_base_dir: str = "",
                     use_video: bool = False,
-                    filter_if_override: list = None):
+                    filter_if_override: list = None,
+                    extra_context_text: str = ""):
     dataloader = DataLoader(sheet_source=sheet_source,
                             transcript_source=transcript_source)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")

@@ -342,9 +342,11 @@ def process_observations(transcript_df: pd.DataFrame,
         # -----------------------------------------------------------
         
         # Create prompt by passing all context variables (empty if not used)
+        extra_context_text = kwargs.get("extra_context_text", "")
         prompt = prompt_template.format(dialogue=combined_dialogue,
                                        bwd_context=bwd_context,
-                                       fwd_context=fwd_context)
+                                       fwd_context=fwd_context,
+                                       extra_context=extra_context_text)
 
         # Resolve video clip path(s): target row(s) + optional context window (bwd, then fwd) for Gemini
         clip_paths = []

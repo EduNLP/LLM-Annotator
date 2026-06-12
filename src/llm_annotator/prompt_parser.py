@@ -49,7 +49,8 @@ def escape_literal_braces(template: str) -> str:
     template = template.replace('{summary}', '@@SUMMARY_TAG@@')
     template = template.replace('{bwd_context}', '@@BWD_CONTEXT_TAG@@') 
     template = template.replace('{fwd_context}', '@@FWD_CONTEXT_TAG@@')
-    
+    template = template.replace('{extra_context}', '@@EXTRA_CONTEXT_TAG@@')
+
     # 2. Globally escape all remaining single braces (in the dictionary, etc.).
     # This turns '{' into '{{' and '}' into '}}', making them literal text.
     template = template.replace('{', '{{').replace('}', '}}')
@@ -61,6 +62,7 @@ def escape_literal_braces(template: str) -> str:
     template = template.replace('@@SUMMARY_TAG@@', '{summary}')
     template = template.replace('@@BWD_CONTEXT_TAG@@', '{bwd_context}')
     template = template.replace('@@FWD_CONTEXT_TAG@@', '{fwd_context}')
+    template = template.replace('@@EXTRA_CONTEXT_TAG@@', '{extra_context}')
 
     return template
 
@@ -80,6 +82,8 @@ def build_annotation_prompt(feature_dict: Dict,
 
         template += definition
         template += examples
+
+        template += "{extra_context}"
 
         template += (
             f"\n\nFormat the output as JSON with the <uttid> as keys.\n\n"
@@ -104,12 +108,13 @@ def build_annotation_prompt(feature_dict: Dict,
 
 def replace_template_variables(template: str, definition: str, examples: str):
     return template.format(
-        definition=definition, 
+        definition=definition,
         examples=examples,
-        dialogue='{dialogue}', # Pass-through for later formatting
-        summary='{summary}',    # Pass-through for later formatting
-        bwd_context='{bwd_context}', 
-        fwd_context='{fwd_context}'
+        dialogue='{dialogue}',
+        summary='{summary}',
+        bwd_context='{bwd_context}',
+        fwd_context='{fwd_context}',
+        extra_context='{extra_context}',
     )
 
 
