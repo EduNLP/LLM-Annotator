@@ -93,11 +93,13 @@ class ExperimentConfig:
 
     # Multimodal video (whole-segment, not pre-cut clips)
     use_video: bool = False
-    # Google Sheet ID with observation metadata:
-    #   - "Index" column: obsid → "25-0195" style value
-    #   - "Video Link" column: Drive folder hyperlink containing OBS-25-XXXX_Video* files
-    #   - "Segment Timestamps" column: free-text block mapping segment letters to time ranges
-    obs_sheet_source: Optional[str] = None
+
+    # Tracker Google Sheet ID — single source for observation metadata:
+    #   - "Index" column: obsid in "25-0195" format
+    #   - "Link to deidentified transcripts": HYPERLINK to raw transcript sheet
+    #   - "Video Link" column: Drive folder with OBS-25-XXXX_Video* files
+    #   - "Segment Timestamps" column: maps segment letters to time ranges
+    tracker_sheet_id: Optional[str] = None
 
     # Run control
     n_uttr: int = 1
@@ -120,8 +122,8 @@ class ExperimentConfig:
     mode: str = ""
 
     def __post_init__(self):
-        if self.use_video and not self.obs_sheet_source:
-            raise ValueError("obs_sheet_source must be set when use_video=True")
+        if self.use_video and not self.tracker_sheet_id:
+            raise ValueError("tracker_sheet_id must be set when use_video=True")
 
     def get_feature_rules(self, feature: str, sheet_meta: dict = None) -> dict:
         """Return merged feature rules: config overrides take priority over sheet defaults.

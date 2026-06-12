@@ -102,10 +102,10 @@ def estimate_cost(config, transcript_df: pd.DataFrame, feature_dict: Dict,
     # --- Video tokens ---
     video_tokens = 0
     if config.use_video:
-        if config.obs_sheet_source:
+        if config.tracker_sheet_id:
             try:
                 from llm_annotator.video_loader import load_obs_sheet, total_video_seconds
-                obs_df = load_obs_sheet(config.obs_sheet_source)
+                obs_df = load_obs_sheet(config.tracker_sheet_id)
                 obs_ids = transcript_df["obsid"].astype(str).unique() \
                     if "obsid" in transcript_df.columns else []
                 total_secs = sum(total_video_seconds(obs_df, oid) for oid in obs_ids)

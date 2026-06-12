@@ -514,9 +514,9 @@ f 14:07-20:41 Task F"""
     if ExperimentConfig:
         try:
             ExperimentConfig(use_video=True)
-            print("  [FAIL] Should have raised ValueError for missing obs_sheet_source")
+            print("  [FAIL] Should have raised ValueError for missing tracker_sheet_id")
         except ValueError:
-            print("  [PASS] use_video=True without obs_sheet_source raises ValueError")
+            print("  [PASS] use_video=True without tracker_sheet_id raises ValueError")
 
     # Test 5: filter_by_feature_rules
     # Inline reimplementation for local testing — the real function is in preprocess.py

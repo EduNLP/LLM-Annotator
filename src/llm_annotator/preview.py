@@ -10,7 +10,7 @@ making any API calls or spending credits. Includes:
 
 Usage:
     from llm_annotator.preview import preview_pipeline
-    preview_pipeline(config, gc=gc, validation_path=..., tracker_sheet_id=...)
+    preview_pipeline(config, gc=gc, validation_path=...)
 """
 
 import os
@@ -27,10 +27,10 @@ def preview_pipeline(
     config: ExperimentConfig,
     gc=None,
     validation_path: str = "",
-    tracker_sheet_id: str = "",
     tracker_tab: str = "Tracker",
 ):
     """Print a complete dry-run preview of what the pipeline will do."""
+    tracker_sheet_id = config.tracker_sheet_id or ""
 
     print("\n" + "=" * 70)
     print("  DRY-RUN PREVIEW — no API calls, no credits spent")

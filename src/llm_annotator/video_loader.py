@@ -107,12 +107,12 @@ def parse_segment_timestamps(text: str) -> SegmentMap:
 # Sheet loader
 # ---------------------------------------------------------------------------
 
-def load_obs_sheet(obs_sheet_source: str, gc=None) -> pd.DataFrame:
-    """Load the observation metadata sheet and parse segment timestamps.
+def load_obs_sheet(tracker_sheet_id: str, gc=None) -> pd.DataFrame:
+    """Load the Tracker sheet and parse segment timestamps.
 
     Args:
-        obs_sheet_source: Google Sheet ID containing Index, Video Link,
-            and Segment Timestamps columns.
+        tracker_sheet_id: Google Sheet ID for the Tracker, containing Index,
+            Video Link, and Segment Timestamps columns.
         gc: Authorised gspread client. If None, attempts to import from
             the dataloader module (works when running in Colab where
             dataloader.py already authenticated).
@@ -136,7 +136,7 @@ def load_obs_sheet(obs_sheet_source: str, gc=None) -> pd.DataFrame:
             "No gspread client available. Pass gc= or run in Colab after auth."
         )
 
-    sheet = gc.open_by_key(obs_sheet_source).sheet1
+    sheet = gc.open_by_key(tracker_sheet_id).sheet1
     data = sheet.get_all_records()
     raw_df = pd.DataFrame(data)
 

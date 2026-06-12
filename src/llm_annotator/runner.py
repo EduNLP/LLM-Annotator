@@ -22,7 +22,6 @@ def run_pipeline(
     config: ExperimentConfig,
     results_sheet_id: str = "",
     validation_path: str = "",
-    tracker_sheet_id: str = "",
     gc=None,
     verbose: bool = True,
     user: str = "",
@@ -31,16 +30,17 @@ def run_pipeline(
     """Run the full annotation pipeline from config.
 
     Steps:
-        1. Load data & estimate cost
-        2. Annotate (or resume from existing batch)
-        3. Evaluate against validation set (if validation_path provided)
-        4. Log metrics to Google Sheets (if results_sheet_id provided)
+        1. Format transcripts from Tracker (uses config.tracker_sheet_id)
+        2. Cost estimate
+        3. Annotate (or resume from existing batch)
+        4. Evaluate against validation set (if validation_path provided)
+        5. Log metrics to Google Sheets (if results_sheet_id provided)
 
     Args:
-        config: ExperimentConfig with all params.
+        config: ExperimentConfig with all params (including tracker_sheet_id).
         results_sheet_id: Google Sheet ID for logging metrics. Skip if empty.
         validation_path: Path to validation CSV. Skip eval if empty.
-        gc: Authorised gspread client (needed for sheet logging).
+        gc: Authorised gspread client (needed for sheet logging and Tracker).
         verbose: Print detailed logs. If False, only prints cost table and final metrics.
     """
     _log = print if verbose else lambda *a, **k: None
@@ -51,13 +51,15 @@ def run_pipeline(
             return pd.DataFrame()
 
     try:
-        return _run_inner(config, results_sheet_id, validation_path, tracker_sheet_id, gc, verbose, _log)
+        return _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log)
     finally:
         if results_sheet_id and gc:
             release_lock(gc, results_sheet_id)
 
 
-def _run_inner(config, results_sheet_id, validation_path, tracker_sheet_id, gc, verbose, _log):
+def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
+    tracker_sheet_id = config.tracker_sheet_id or ""
+
     # ── 1. Format from Tracker (always runs) ──
     if tracker_sheet_id and gc:
         _log("\n── Formatting transcripts from Tracker ──")
