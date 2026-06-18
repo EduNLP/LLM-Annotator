@@ -26,14 +26,17 @@ def mark_ineligible_rows(model_list: List[str],
     # Create separate dfs for individual features
     atn_feature_dfs = {feature_name: transcript_df.copy() for feature_name in feature_dict.keys()}
 
-    # Filter out ineligible rows
-    eligible_rows = transcript_df[
-    (transcript_df['role'].str.lower() == 'student') & 
-    (
-        ~transcript_df['dialogue'].str.contains("unintelligible", case=False, na=False) | 
-        (transcript_df['dialogue'].str.split().str.len() >= 7)
-    )
-]
+    # Filter out ineligible rows — use precomputed 'selectable' if available
+    if "selectable" in transcript_df.columns:
+        eligible_rows = transcript_df[transcript_df["selectable"] == 1]
+    else:
+        eligible_rows = transcript_df[
+            (transcript_df['role'].str.lower() == 'student') &
+            (
+                ~transcript_df['dialogue'].str.contains("unintelligible", case=False, na=False) |
+                (transcript_df['dialogue'].str.split().str.len() >= 7)
+            )
+        ]
     ineligible_rows = transcript_df.index.difference(eligible_rows.index)
 
     # Mark ineligible rows with Nones

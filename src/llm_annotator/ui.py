@@ -10,9 +10,8 @@ Usage:
 """
 
 import os
-import glob
 import ipywidgets as widgets
-from IPython.display import display, HTML
+from IPython.display import display
 from llm_annotator.config import ExperimentConfig
 
 
@@ -58,14 +57,6 @@ def _load_feature_options(gc, features_sheet_id: str) -> list[tuple[str, str]]:
         return []
 
 
-def _find_validation_csvs(drive_base: str) -> list[str]:
-    """Find CSV files in the pipeline outputs folder."""
-    search_dir = os.path.join(drive_base, "MOL Conceptual Pipeline Outputs")
-    if not os.path.isdir(search_dir):
-        return []
-    csvs = sorted(glob.glob(os.path.join(search_dir, "*.csv")))
-    return csvs
-
 
 def _load_obsids_from_csv(path: str) -> list[str]:
     """Read unique obsids from a CSV file."""
@@ -106,18 +97,15 @@ class ConfigUI:
             feature_labels = feature_codes
         self._feature_codes = feature_codes
 
-        val_csvs = _find_validation_csvs(drive_base)
-        val_options = [(os.path.basename(p), p) for p in val_csvs]
         self._obsid_cache = {}
 
-        # ── Validation file selector ──
-        self.validation_file = widgets.Dropdown(
-            options=[("(none)", "")] + val_options,
+        # ── Validation CSV path (text input) ──
+        self.validation_file = widgets.Text(
             value="",
             description="Validation CSV",
+            placeholder="/content/drive/.../mol_videoset_annotated_updated_5626.csv",
             style=STYLE, layout=LAYOUT,
         )
-        self.validation_file.observe(self._on_validation_change, names="value")
 
         # ── Obs IDs (auto-populated from validation CSV) ──
         self.obs_list = widgets.SelectMultiple(
@@ -228,19 +216,19 @@ class ConfigUI:
             self.obs_list.disabled = False
 
     def display(self):
-        display(HTML("<h3>🔬 Experiment Config</h3>"))
+        display(widgets.HTML("<h3>🔬 Experiment Config</h3>"))
 
-        display(HTML("<b>Data source</b>"))
+        display(widgets.HTML("<b>Data source</b>"))
         display(self.validation_file)
         display(widgets.HBox([self.obs_list, widgets.VBox([self.obs_all])]))
 
-        display(HTML("<b>What to run</b>"))
+        display(widgets.HTML("<b>What to run</b>"))
         display(self.models, self.features)
 
-        display(HTML("<b>Prompt settings</b>"))
+        display(widgets.HTML("<b>Prompt settings</b>"))
         display(self.n_uttr, self.bwd, self.fwd)
 
-        display(HTML("<b>Run options</b>"))
+        display(widgets.HTML("<b>Run options</b>"))
         display(widgets.VBox([
             self.test_mode, self.wait, self.use_video,
             self.verbose, self.resume_mode, self.evaluate_only,

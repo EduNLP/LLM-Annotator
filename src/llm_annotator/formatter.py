@@ -79,6 +79,22 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
     # uttid = "241_1", "241_2", ... (global turn number)
     df["uttid"] = obsid + "_" + df["turn"].astype(str)
 
+    # selectable: 0 for teachers/Other/Unknown, short unintelligible/crosstalk
+    df["selectable"] = 1
+    if "speaker" in df.columns:
+        ineligible_speaker = df["speaker"].astype(str).str.contains(
+            r"other|unknown|teacher|\.", case=False, na=False
+        )
+        df.loc[ineligible_speaker, "selectable"] = 0
+    if "dialogue" in df.columns:
+        short_unintelligible = (
+            df["dialogue"].astype(str).str.contains(
+                "unintelligible|crosstalk", case=False, na=False
+            )
+            & (df["dialogue"].astype(str).str.split().str.len() < 7)
+        )
+        df.loc[short_unintelligible, "selectable"] = 0
+
     df = df.reset_index(drop=True)
     return df
 
