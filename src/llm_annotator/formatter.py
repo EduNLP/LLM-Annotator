@@ -62,9 +62,13 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
     df["obsid"] = obsid
     df["transcript"] = obsid
 
-    # turn = sequential row number within this obs
+    # turn = global sequential row number across entire obs
     df["turn"] = range(1, len(df) + 1)
-    df["line"] = df["turn"]
+    # line = row number within each segment
+    if "segment" in df.columns:
+        df["line"] = df.groupby("segment").cumcount() + 1
+    else:
+        df["line"] = df["turn"]
 
     # segment_id_1sd = "241_a"
     if "segment" in df.columns:
@@ -72,14 +76,12 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
     else:
         df["segment_id_1sd"] = obsid + "_1"
 
-    # uttid = "241_a_001" (line number zero-padded within each segment)
+    # uttid = "241_a_001" (segment + line-within-segment zero-padded)
     if "segment" in df.columns:
-        df["line_in_seg"] = df.groupby("segment").cumcount() + 1
         df["uttid"] = (
             obsid + "_" + df["segment"].astype(str)
-            + "_" + df["line_in_seg"].apply(lambda n: f"{n:03d}")
+            + "_" + df["line"].apply(lambda n: f"{n:03d}")
         )
-        df = df.drop(columns=["line_in_seg"])
     else:
         df["uttid"] = obsid + "_" + df["turn"].astype(str)
 
