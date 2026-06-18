@@ -156,12 +156,14 @@ class ConfigUI:
         )
 
         # ── Run control ──
-        self.test_mode = widgets.Checkbox(value=True, description="Test mode (~20 rows)", style=STYLE)
-        self.wait = widgets.Checkbox(value=False, description="Wait for batch to complete", style=STYLE)
-        self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=STYLE)
-        self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=STYLE)
-        self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=STYLE)
-        self.evaluate_only = widgets.Checkbox(value=False, description="Evaluate only (skip annotation, compare previous run to validation)", style=STYLE)
+        _cb = {"description_width": "initial"}
+        _cbl = widgets.Layout(width="500px")
+        self.test_mode = widgets.Checkbox(value=True, description="Test mode (~20 rows)", style=_cb, layout=_cbl)
+        self.wait = widgets.Checkbox(value=False, description="Wait for batch to complete", style=_cb, layout=_cbl)
+        self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=_cb, layout=_cbl)
+        self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=_cb, layout=_cbl)
+        self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=_cb, layout=_cbl)
+        self.evaluate_only = widgets.Checkbox(value=False, description="Evaluate only (skip annotation, compare previous run to validation)", style=_cb, layout=_cbl)
 
         # ── Feature rules (collapsible) ──
         self.filter_if_text = widgets.Textarea(
