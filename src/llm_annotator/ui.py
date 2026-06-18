@@ -200,10 +200,6 @@ class ConfigUI:
         )
 
         # ── Data sources ──
-        self.transcript_source = widgets.Text(
-            value=drive_base + "/MOL Conceptual Pipeline Outputs/mol_formatted_data.csv" if drive_base else "",
-            description="Transcript source", style=STYLE, layout=LAYOUT,
-        )
         self.sheet_source = widgets.Text(
             value=self.sheets.get("features", "1iIzzfXqq2nYMSbzDgu2wQJqnIIwwUY6r"),
             description="Feature sheet ID", style=STYLE, layout=LAYOUT,
@@ -267,7 +263,6 @@ class ConfigUI:
         advanced = widgets.Accordion(children=[
             widgets.VBox([
                 self.resume_text,
-                self.transcript_source,
                 self.sheet_source,
                 self.save_dir,
             ]),
@@ -286,7 +281,6 @@ class ConfigUI:
             model_list=list(self.models.value),
             feature_list=list(self.features.value),
             obs_list=obs_list,
-            transcript_source=self.transcript_source.value,
             sheet_source=self.sheet_source.value,
             bwd_context_count=self.bwd.value,
             fwd_context_count=self.fwd.value,

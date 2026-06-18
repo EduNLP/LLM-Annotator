@@ -58,9 +58,8 @@ class ExperimentConfig:
     feature_list: list = field(default_factory=list)
 
     # Data sources
-    transcript_source: str = ""
-    sheet_source: str = ""
-    obs_list: object = "all"  # list[str] or "all"
+    sheet_source: str = ""       # Feature metadata sheet ID
+    obs_list: object = "all"     # list[str] or "all"
 
     # Prompt context window
     bwd_context_count: int = 2

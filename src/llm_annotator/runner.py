@@ -58,35 +58,28 @@ def run_pipeline(
 
 
 def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
-    tracker_sheet_id = config.tracker_sheet_id or ""
+    if not config.tracker_sheet_id or not gc:
+        raise ValueError("tracker_sheet_id and gc are required — Tracker is the source of truth.")
+    obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
+    if not obs_ids:
+        raise ValueError("obs_list must be a list of obsids (not 'all') when pulling from Tracker.")
 
-    # ── 1. Format from Tracker (always runs) ──
-    if tracker_sheet_id and gc:
-        _log("\n── Formatting transcripts from Tracker ──")
-        obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
-        if obs_ids:
-            save_dir = os.path.join(config.save_dir, "formatted")
-            formatted_df = format_multiple(gc, obs_ids, tracker_sheet_id, save_dir=save_dir)
+    # ── 1. Format from Tracker ──
+    _log("\n── Formatting transcripts from Tracker ──")
+    fmt_save_dir = os.path.join(config.save_dir, "formatted")
+    formatted_df = format_multiple(gc, obs_ids, config.tracker_sheet_id, save_dir=fmt_save_dir)
+    if formatted_df.empty:
+        raise ValueError("Formatter returned empty DataFrame — check Tracker hyperlinks.")
+    transcript_path = os.path.join(fmt_save_dir, "mol_formatted_combined.csv")
+    _log(f"  Transcript ready: {transcript_path}")
 
-            if not formatted_df.empty:
-                # Use formatted output as transcript source
-                combined_path = os.path.join(save_dir, "mol_formatted_combined.csv")
-                if os.path.exists(combined_path):
-                    config.transcript_source = combined_path
-                    _log(f"  Using formatted transcript: {combined_path}")
-
-                # Alignment check if validation set provided
-                if validation_path and os.path.exists(validation_path):
-                    _log("\n── Alignment Check ──")
-                    val_df = pd.read_csv(validation_path)
-                    result = verify_alignment(formatted_df, val_df)
-                    print_alignment_report(result)
-                    if result.get("aligned") is False:
-                        _log("  ⚠️  Alignment issues detected — review before proceeding")
-        else:
-            _log("  No specific obs IDs selected, skipping formatter")
-    else:
-        _log("  No tracker_sheet_id or gc — skipping formatter (using transcript_source as-is)")
+    if validation_path and os.path.exists(validation_path):
+        _log("\n── Alignment Check ──")
+        val_df = pd.read_csv(validation_path)
+        result = verify_alignment(formatted_df, val_df)
+        print_alignment_report(result)
+        if result.get("aligned") is False:
+            _log("  ⚠️  Alignment issues detected — review before proceeding")
 
     # ── Evaluate-only mode ──
     if config.evaluate_only:
@@ -102,7 +95,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
 
     # ── 2. Cost estimate ──
     _log("Loading data...")
-    dl = DataLoader(sheet_source=config.sheet_source, transcript_source=config.transcript_source)
+    dl = DataLoader(sheet_source=config.sheet_source, transcript_source=transcript_path)
     _, transcript_df = pre_process_transcript(dl.transcript_df, config.obs_list)
 
     feature_dict = {}
@@ -120,12 +113,10 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
     for feature in config.feature_list:
         _log(f"\n── {feature} ──")
 
-        # Apply feature rule overrides
         rules = config.get_feature_rules(feature, feature_dict.get(feature))
         if rules["filter_if"]:
             _log(f"  Will filter rows where {rules['filter_if']} == 1")
 
-        # Resolve extra context for this feature
         ctx_key = rules.get("extra_context_type", "")
         extra_text = ""
         if ctx_key and ctx_key in config.extra_context:
@@ -136,7 +127,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
             resume(
                 feature=feature,
                 resume_batch_ids=config.resume_batch_ids,
-                transcript_source=config.transcript_source,
+                transcript_source=transcript_path,
                 sheet_source=config.sheet_source,
                 save_dir=config.save_dir,
             )
@@ -145,7 +136,7 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
                 model_list=config.model_list,
                 obs_list=config.obs_list,
                 feature=feature,
-                transcript_source=config.transcript_source,
+                transcript_source=transcript_path,
                 sheet_source=config.sheet_source,
                 n_uttr=config.n_uttr,
                 if_wait=config.if_wait,
