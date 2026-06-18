@@ -39,8 +39,11 @@ def _load_feature_options(gc, features_sheet_id: str) -> list[tuple[str, str]]:
     try:
         from llm_annotator.utils import read_sheet_as_dataframes
         tabs = read_sheet_as_dataframes(gc, features_sheet_id)
+        FEATURE_TABS = {"conceptual", "discursive"}
         results = []
         for tab_name, df in tabs.items():
+            if tab_name.strip().lower() not in FEATURE_TABS:
+                continue
             if df.empty:
                 continue
             code_col = next((c for c in df.columns if c.strip().lower() == "code"), None)
