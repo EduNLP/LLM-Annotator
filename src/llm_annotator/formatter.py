@@ -105,54 +105,65 @@ def format_from_tracker(
     Returns:
         Formatted DataFrame ready for the pipeline.
     """
-    # Find the row
-    ws = gc.open_by_key(tracker_sheet_id).worksheet(tracker_tab)
-    all_data = ws.get_all_values()
-    headers = all_data[0]
+    # Load tracker — works for both native Google Sheets and uploaded .xlsx files
+    from llm_annotator.utils import read_sheet_as_dataframes
+    tabs = read_sheet_as_dataframes(gc, tracker_sheet_id)
 
-    idx_col = next(i for i, h in enumerate(headers) if h.strip().lower() == "index")
-    transcript_col = next(
-        (i for i, h in enumerate(headers) if "deidentified" in h.lower() and "link" in h.lower()),
+    tab_key = next((k for k in tabs if k.strip().lower() == tracker_tab.lower()), None)
+    if tab_key is None:
+        raise ValueError(f"Tab '{tracker_tab}' not found in Tracker. Available: {list(tabs.keys())}")
+    tracker_df = tabs[tab_key]
+
+    headers = list(tracker_df.columns)
+    idx_col_name = next((h for h in headers if h.strip().lower() == "index"), None)
+    transcript_col_name = next(
+        (h for h in headers if "deidentified" in h.lower() and "link" in h.lower()),
         None,
     )
-
-    if transcript_col is None:
+    if idx_col_name is None:
+        raise ValueError("Could not find 'Index' column in Tracker")
+    if transcript_col_name is None:
         raise ValueError("Could not find 'Link to deidentified transcripts' column in Tracker")
 
-    row_idx = None
-    for ri, row in enumerate(all_data[1:], 2):
-        if idx_col < len(row):
-            m = re.search(r"\d{2}-0*(\d+)", row[idx_col].strip())
-            if m and int(m.group(1)) == int(obsid):
-                row_idx = ri
-                break
-
-    if row_idx is None:
+    row = None
+    for _, r in tracker_df.iterrows():
+        val = str(r[idx_col_name]).strip()
+        m = re.search(r"\d{2}-0*(\d+)", val)
+        if m and int(m.group(1)) == int(obsid):
+            row = r
+            break
+    if row is None:
         raise ValueError(f"obsid {obsid} not found in Tracker")
 
-    # Get the hyperlink URL
-    from gspread.utils import rowcol_to_a1
-    cell_addr = rowcol_to_a1(row_idx, transcript_col + 1)
-    formula = ws.acell(cell_addr, value_render_option="FORMULA").value
-
+    # The cell value may be a plain URL or an Excel HYPERLINK formula
+    cell_val = str(row[transcript_col_name])
     url = None
-    if formula and "HYPERLINK" in str(formula).upper():
-        m = re.search(r'HYPERLINK\("([^"]+)"', str(formula))
+    if "HYPERLINK" in cell_val.upper():
+        m = re.search(r'HYPERLINK\("([^"]+)"', cell_val)
         if m:
             url = m.group(1)
     if not url:
-        url = ws.acell(cell_addr).value
+        # plain URL or Drive link
+        m = re.search(r"https?://[^\s\"']+", cell_val)
+        if m:
+            url = m.group(0)
+    if not url:
+        url = cell_val.strip()
 
-    # Extract sheet ID
+    # Extract sheet ID from URL
     m = re.search(r"/d/([a-zA-Z0-9_-]+)", str(url))
     if not m:
         raise ValueError(f"Could not extract sheet ID from transcript link: {url}")
     sheet_id = m.group(1)
 
-    # Load raw transcript
-    t_ws = gc.open_by_key(sheet_id).sheet1
-    t_data = t_ws.get_all_values()
-    raw_df = pd.DataFrame(t_data[1:], columns=t_data[0])
+    # Load raw transcript (the linked sheet is typically a native Google Sheet)
+    try:
+        t_ws = gc.open_by_key(sheet_id).sheet1
+        t_data = t_ws.get_all_values()
+        raw_df = pd.DataFrame(t_data[1:], columns=t_data[0])
+    except Exception:
+        t_tabs = read_sheet_as_dataframes(gc, sheet_id)
+        raw_df = next(iter(t_tabs.values()))
 
     # Format
     formatted = format_transcript(raw_df, obsid)
