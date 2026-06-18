@@ -76,14 +76,8 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
     else:
         df["segment_id_1sd"] = obsid + "_segment_1"
 
-    # uttid = "241_a_001" (segment + line-within-segment zero-padded)
-    if "segment" in df.columns:
-        df["uttid"] = (
-            obsid + "_" + df["segment"].astype(str)
-            + "_" + df["line"].apply(lambda n: f"{n:03d}")
-        )
-    else:
-        df["uttid"] = obsid + "_" + df["turn"].astype(str)
+    # uttid = "241_1", "241_2", ... (global turn number)
+    df["uttid"] = obsid + "_" + df["turn"].astype(str)
 
     df = df.reset_index(drop=True)
     return df
