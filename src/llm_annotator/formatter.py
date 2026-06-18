@@ -48,14 +48,11 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
         s = df["speaker"].astype(str)
         teacher_like = (
             s.str.contains("teacher", case=False, na=False)
-            | s.str.contains(r"^(Mr\.|Ms\.|Mrs\.|Dr\.)", regex=True, na=False)
+            | s.str.contains(r"^(?:Mr\.|Ms\.|Mrs\.|Dr\.)", regex=True, na=False)
             | s.str.contains(r"\.", regex=True, na=False)
         )
         teacher_like = teacher_like | df["speaker"].isna()
         df.loc[teacher_like, "role"] = "Teacher"
-
-    # 3. Filter to students only
-    df = df[df["role"] == "Student"].copy()
 
     # 4. Normalize segment letters to lowercase
     if "segment" in df.columns:
@@ -69,14 +66,22 @@ def format_transcript(raw_df: pd.DataFrame, obsid: int | str) -> pd.DataFrame:
     df["turn"] = range(1, len(df) + 1)
     df["line"] = df["turn"]
 
-    # segment_id_1sd = "241_segment_a"
+    # segment_id_1sd = "241_a"
     if "segment" in df.columns:
-        df["segment_id_1sd"] = obsid + "_segment_" + df["segment"].astype(str)
+        df["segment_id_1sd"] = obsid + "_" + df["segment"].astype(str)
     else:
-        df["segment_id_1sd"] = obsid + "_segment_1"
+        df["segment_id_1sd"] = obsid + "_1"
 
-    # uttid = "241_1", "241_2", ...
-    df["uttid"] = obsid + "_" + df["turn"].astype(str)
+    # uttid = "241_a_001" (line number zero-padded within each segment)
+    if "segment" in df.columns:
+        df["line_in_seg"] = df.groupby("segment").cumcount() + 1
+        df["uttid"] = (
+            obsid + "_" + df["segment"].astype(str)
+            + "_" + df["line_in_seg"].apply(lambda n: f"{n:03d}")
+        )
+        df = df.drop(columns=["line_in_seg"])
+    else:
+        df["uttid"] = obsid + "_" + df["turn"].astype(str)
 
     df = df.reset_index(drop=True)
     return df
