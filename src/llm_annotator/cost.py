@@ -58,7 +58,7 @@ def estimate_cost(config, transcript_df: pd.DataFrame, feature_dict: Dict,
         transcript_df: Loaded transcript DataFrame (after pre-processing).
         feature_dict: Feature metadata dict from generate_features().
         avg_segment_duration_sec: Used for video cost estimate when
-            obs_sheet_source is not yet resolved. Default 2 min/segment.
+            tracker_sheet_id is not yet resolved. Default 2 min/segment.
 
     Returns:
         Dict mapping model name -> estimated USD cost.
