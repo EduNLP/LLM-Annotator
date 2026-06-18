@@ -37,19 +37,18 @@ def _load_feature_options(gc, features_sheet_id: str) -> list[tuple[str, str]]:
     if not gc or not features_sheet_id:
         return []
     try:
-        spreadsheet = gc.open_by_key(features_sheet_id)
+        from llm_annotator.utils import read_sheet_as_dataframes
+        tabs = read_sheet_as_dataframes(gc, features_sheet_id)
         results = []
-        for ws in spreadsheet.worksheets():
-            data = ws.get_all_values()
-            if len(data) < 2:
+        for tab_name, df in tabs.items():
+            if df.empty:
                 continue
-            headers = data[0]
-            code_idx = next((i for i, h in enumerate(headers) if h.strip().lower() == "code"), None)
-            if code_idx is None:
+            code_col = next((c for c in df.columns if c.strip().lower() == "code"), None)
+            if code_col is None:
                 continue
-            for row in data[1:]:
-                if code_idx < len(row) and row[code_idx].strip():
-                    results.append((row[code_idx].strip(), ws.title))
+            for code in df[code_col].dropna().astype(str):
+                if code.strip():
+                    results.append((code.strip(), tab_name))
         return results
     except Exception as e:
         print(f"[ui] Could not load features from sheet: {e}")
@@ -241,11 +240,14 @@ class ConfigUI:
         display(self.n_uttr, self.bwd, self.fwd)
 
         display(HTML("<b>Run options</b>"))
-        display(self.test_mode, self.wait, self.use_video, self.verbose, self.resume_mode, self.evaluate_only)
+        display(widgets.VBox([
+            self.test_mode, self.wait, self.use_video,
+            self.verbose, self.resume_mode, self.evaluate_only,
+        ], layout=widgets.Layout(width="400px")))
 
         rules_accordion = widgets.Accordion(children=[
             widgets.VBox([
-                HTML("<p style='color:gray'>Override sheet defaults. Format: <code>FeatureName: value</code>, one per line.</p>"),
+                widgets.HTML("<p style='color:gray'>Override sheet defaults. Format: <code>FeatureName: value</code>, one per line.</p>"),
                 self.filter_if_text,
                 self.linked_with_text,
                 self.subcode_of_text,

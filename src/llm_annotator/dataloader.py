@@ -102,25 +102,14 @@ class DataLoader:
                     raise ValueError(f"Error reading sheet '{sheet_name}': {e}")
 
         # Check if the source is a Google Sheet ID
-        else: 
+        else:
             try:
-                feature_sheet = self.gc.open_by_key(source)
-            except:
+                tabs = utils.read_sheet_as_dataframes(self.gc, source)
+            except Exception:
                 raise ValueError("The provided source is neither a valid local file nor a valid Google Sheet ID.")
 
-            sheet_names = [sheet.title for sheet in feature_sheet.worksheets()]
-
-            # Extract the individual features from seperate sheets.
             self.sheets_data = {}
-            for sheet_name in sheet_names:
-                try:
-                    worksheet = feature_sheet.worksheet(sheet_name)
-                    data = worksheet.get_all_values()
-                except:
-                    raise ValueError(f"The sheet '{sheet_name}' is not found.")
-                df = pd.DataFrame(data[1:], columns=data[0])
-
-                # Fill in the missing Code Type
+            for sheet_name, df in tabs.items():
                 if "Code Type" in df.columns:
                     df["Code Type"] = df["Code Type"].replace("", None).ffill()
                 self.sheets_data[sheet_name] = df

@@ -286,6 +286,34 @@ def load_sheets_config(path: str) -> dict:
     return {key: sheet_id_from_url(val) for key, val in raw.items()}
 
 
+def read_sheet_as_dataframes(gc, sheet_id: str) -> dict:
+    """Read a Google Sheet (native or .xlsx) into {tab_name: DataFrame}.
+
+    Tries gspread first; on 400 "Office file" error, downloads the raw
+    xlsx bytes via the Drive files API and reads with openpyxl.
+    """
+    import pandas as pd
+    try:
+        spreadsheet = gc.open_by_key(sheet_id)
+        result = {}
+        for ws in spreadsheet.worksheets():
+            data = ws.get_all_values()
+            if len(data) < 2:
+                result[ws.title] = pd.DataFrame()
+                continue
+            result[ws.title] = pd.DataFrame(data[1:], columns=data[0])
+        return result
+    except Exception as e:
+        if "Office file" not in str(e):
+            raise
+    # Fallback: download xlsx bytes via Drive API
+    import io
+    url = f"https://www.googleapis.com/drive/v3/files/{sheet_id}?alt=media"
+    resp = gc.http_client.request("get", url)
+    xlsx_bytes = resp.content if hasattr(resp, 'content') else resp.data
+    return pd.read_excel(io.BytesIO(xlsx_bytes), sheet_name=None, engine="openpyxl")
+
+
 def create_batch_dir(save_dir: str, feature: str, timestamp: str):
     results_dir = os.path.join(save_dir, "result")
     feature_dir = os.path.join(results_dir, feature)
