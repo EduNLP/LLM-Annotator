@@ -48,9 +48,12 @@ def preview_pipeline(
 
     print(f"  Transcript:       {len(transcript_df)} total rows, {n_student} student utterances")
     print(f"  Observations:     {len(obs_ids)} obs → {', '.join(obs_ids[:10])}{'...' if len(obs_ids) > 10 else ''}")
-    print(f"  Test mode:        {'YES (~20 rows)' if config.if_test else 'NO (all rows)'}")
-    if config.if_test:
-        n_student = min(n_student, 20)
+    test_labels = {"full": "NO (all rows)", "1_segment": "YES (1 segment)", "1_transcript": "YES (1 transcript)", "n_rows": f"YES ({config.test_n_rows} rows)"}
+    print(f"  Test mode:        {test_labels.get(config.test_mode, config.test_mode)}")
+    if config.test_mode == "n_rows":
+        n_student = min(n_student, config.test_n_rows)
+    elif config.test_mode != "full":
+        n_student = min(n_student, 50)  # rough estimate for 1 segment/transcript
 
     n_requests = math.ceil(n_student / config.n_uttr)
     print(f"  Requests:         ~{n_requests} ({config.n_uttr} utterances each, bwd={config.bwd_context_count} fwd={config.fwd_context_count})")

@@ -91,8 +91,10 @@ def estimate_cost(config, transcript_df: pd.DataFrame, feature_dict: Dict,
     n_student_rows = len(transcript_df[transcript_df.get("role", pd.Series(["Student"] * len(transcript_df))) == "Student"]) \
         if "role" in transcript_df.columns else len(transcript_df)
 
-    if config.if_test:
-        n_student_rows = min(n_student_rows, 20)
+    if config.test_mode == "n_rows":
+        n_student_rows = min(n_student_rows, config.test_n_rows)
+    elif config.test_mode != "full":
+        n_student_rows = min(n_student_rows, 50)  # rough cap for 1 segment/transcript
 
     n_requests = math.ceil(n_student_rows / config.n_uttr)
 

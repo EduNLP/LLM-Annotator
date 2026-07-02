@@ -146,7 +146,21 @@ class ConfigUI:
         # ── Run control ──
         _cb = {"description_width": "initial"}
         _cbl = widgets.Layout(width="500px")
-        self.test_mode = widgets.Checkbox(value=True, description="Test mode (~20 rows)", style=_cb, layout=_cbl)
+        self.test_mode = widgets.Dropdown(
+            options=[
+                ("1 segment (default test)", "1_segment"),
+                ("1 transcript (all segments)", "1_transcript"),
+                ("N rows", "n_rows"),
+                ("Full run", "full"),
+            ],
+            value="1_segment",
+            description="Test mode",
+            style=_cb, layout=_cbl,
+        )
+        self.test_n_rows = widgets.IntText(
+            value=20, description="N rows (if N rows mode)",
+            style=_cb, layout=_cbl,
+        )
         self.wait = widgets.Checkbox(value=False, description="Wait for batch to complete", style=_cb, layout=_cbl)
         self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=_cb, layout=_cbl)
         self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=_cb, layout=_cbl)
@@ -230,7 +244,7 @@ class ConfigUI:
 
         display(widgets.HTML("<b>Run options</b>"))
         display(widgets.VBox([
-            self.test_mode, self.wait, self.use_video,
+            self.test_mode, self.test_n_rows, self.wait, self.use_video,
             self.verbose, self.resume_mode, self.evaluate_only,
         ], layout=widgets.Layout(width="400px")))
 
@@ -273,7 +287,8 @@ class ConfigUI:
             bwd_context_count=self.bwd.value,
             fwd_context_count=self.fwd.value,
             n_uttr=self.n_uttr.value,
-            if_test=self.test_mode.value,
+            test_mode=self.test_mode.value,
+            test_n_rows=self.test_n_rows.value,
             if_wait=self.wait.value,
             use_video=self.use_video.value,
             save_dir=self.save_dir.value,

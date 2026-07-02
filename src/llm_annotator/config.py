@@ -102,7 +102,8 @@ class ExperimentConfig:
 
     # Run control
     n_uttr: int = 1
-    if_test: bool = False
+    test_mode: str = "full"  # "full", "1_segment", "1_transcript", "n_rows"
+    test_n_rows: int = 20
     if_wait: bool = False
     save_dir: str = "result/"
 
@@ -120,7 +121,14 @@ class ExperimentConfig:
     annotation_prompt_path: str = ""
     mode: str = ""
 
+    @property
+    def if_test(self) -> bool:
+        return self.test_mode != "full"
+
     def __post_init__(self):
+        valid_test_modes = {"full", "1_segment", "1_transcript", "n_rows"}
+        if self.test_mode not in valid_test_modes:
+            raise ValueError(f"test_mode must be one of {valid_test_modes}, got '{self.test_mode}'")
         if self.use_video and not self.tracker_sheet_id:
             raise ValueError("tracker_sheet_id must be set when use_video=True")
 

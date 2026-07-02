@@ -73,6 +73,24 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
     transcript_path = os.path.join(fmt_save_dir, "mol_formatted_combined.csv")
     _log(f"  Transcript ready: {transcript_path}")
 
+    # ── Apply test mode filtering ──
+    if config.test_mode == "1_segment":
+        first_seg = formatted_df["segment_id_1sd"].iloc[0] if "segment_id_1sd" in formatted_df.columns else None
+        if first_seg:
+            formatted_df = formatted_df[formatted_df["segment_id_1sd"] == first_seg].copy()
+            formatted_df.to_csv(transcript_path, index=False)
+            _log(f"  Test mode (1 segment): filtered to {first_seg} → {len(formatted_df)} rows")
+    elif config.test_mode == "1_transcript":
+        first_obs = str(formatted_df["obsid"].iloc[0]) if "obsid" in formatted_df.columns else None
+        if first_obs:
+            formatted_df = formatted_df[formatted_df["obsid"].astype(str) == first_obs].copy()
+            formatted_df.to_csv(transcript_path, index=False)
+            _log(f"  Test mode (1 transcript): filtered to obs {first_obs} → {len(formatted_df)} rows")
+    elif config.test_mode == "n_rows":
+        formatted_df = formatted_df.head(config.test_n_rows).copy()
+        formatted_df.to_csv(transcript_path, index=False)
+        _log(f"  Test mode (N rows): filtered to first {config.test_n_rows} → {len(formatted_df)} rows")
+
     if validation_path and os.path.exists(validation_path):
         _log("\n── Alignment Check ──")
         val_df = pd.read_csv(validation_path)
