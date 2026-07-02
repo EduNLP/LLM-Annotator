@@ -131,6 +131,13 @@ class ExperimentConfig:
             raise ValueError(f"test_mode must be one of {valid_test_modes}, got '{self.test_mode}'")
         if self.use_video and not self.tracker_sheet_id:
             raise ValueError("tracker_sheet_id must be set when use_video=True")
+        if self.use_video and self.model_list:
+            non_gemini = [m for m in self.model_list if m not in GEMINI_MODEL_IDS]
+            if non_gemini:
+                raise ValueError(
+                    f"use_video=True requires Gemini models only. "
+                    f"Non-Gemini models selected: {non_gemini}"
+                )
 
     def get_feature_rules(self, feature: str, sheet_meta: dict = None) -> dict:
         """Return merged feature rules: config overrides take priority over sheet defaults.

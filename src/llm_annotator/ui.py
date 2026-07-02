@@ -13,6 +13,7 @@ import os
 import ipywidgets as widgets
 from IPython.display import display
 from llm_annotator.config import ExperimentConfig
+from llm_annotator.constants import GEMINI_MODEL_IDS
 
 
 MODEL_OPTIONS = [
@@ -21,6 +22,8 @@ MODEL_OPTIONS = [
     "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro",
     "gemini-3-flash-preview", "gemini-3-pro-preview",
 ]
+
+GEMINI_OPTIONS = [m for m in MODEL_OPTIONS if m in GEMINI_MODEL_IDS]
 
 STYLE = {"description_width": "180px"}
 LAYOUT = widgets.Layout(width="600px")
@@ -163,6 +166,7 @@ class ConfigUI:
         )
         self.wait = widgets.Checkbox(value=False, description="Wait for batch to complete", style=_cb, layout=_cbl)
         self.use_video = widgets.Checkbox(value=False, description="Include video (Gemini only)", style=_cb, layout=_cbl)
+        self.use_video.observe(self._on_video_change, names="value")
         self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=_cb, layout=_cbl)
         self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=_cb, layout=_cbl)
         self.evaluate_only = widgets.Checkbox(value=False, description="Evaluate only (skip annotation, compare previous run to validation)", style=_cb, layout=_cbl)
@@ -228,6 +232,14 @@ class ConfigUI:
             self.obs_list.disabled = True
         else:
             self.obs_list.disabled = False
+
+    def _on_video_change(self, change):
+        if change["new"]:
+            self.models.options = GEMINI_OPTIONS
+            self.models.value = [GEMINI_OPTIONS[0]] if GEMINI_OPTIONS else []
+        else:
+            self.models.options = MODEL_OPTIONS
+            self.models.value = ["gpt-5-mini"]
 
     def display(self):
         display(widgets.HTML("<h3>🔬 Experiment Config</h3>"))
