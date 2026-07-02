@@ -102,11 +102,24 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
     # ── Evaluate-only mode ──
     if config.evaluate_only:
         _log("\n── Evaluate-only mode ──")
-        results_df = pd.DataFrame()
-        if validation_path and os.path.exists(validation_path):
-            results_df = _evaluate(config, validation_path, verbose)
-        else:
-            print("  ⚠️  evaluate_only=True but no validation_path provided")
+        if not validation_path:
+            raise ValueError("evaluate_only=True but no validation CSV path provided.")
+        if not os.path.exists(validation_path):
+            raise FileNotFoundError(f"Validation CSV not found: {validation_path}")
+        val_df = pd.read_csv(validation_path)
+        if "uttid" not in val_df.columns:
+            raise ValueError(f"Validation CSV missing required 'uttid' column. Columns found: {list(val_df.columns)}")
+        missing_features = [
+            f for f in config.feature_list
+            if f.lower() not in [c.lower() for c in val_df.columns]
+        ]
+        if missing_features:
+            raise ValueError(
+                f"Validation CSV missing ground truth columns for features: {missing_features}. "
+                f"Expected lowercase column names (e.g. 'directions'). "
+                f"Columns found: {list(val_df.columns)}"
+            )
+        results_df = _evaluate(config, validation_path, verbose)
         if results_sheet_id and gc and not results_df.empty:
             _log_to_sheets(results_df, results_sheet_id, gc, verbose)
         return results_df
