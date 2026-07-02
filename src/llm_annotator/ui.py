@@ -169,6 +169,7 @@ class ConfigUI:
         self.use_video.observe(self._on_video_change, names="value")
         self.verbose = widgets.Checkbox(value=True, description="Show detailed logs", style=_cb, layout=_cbl)
         self.resume_mode = widgets.Checkbox(value=False, description="Resume (skip submission, fetch results)", style=_cb, layout=_cbl)
+        self.resume_mode.observe(self._on_resume_change, names="value")
         self.evaluate_only = widgets.Checkbox(value=False, description="Evaluate only (skip annotation, compare previous run to validation)", style=_cb, layout=_cbl)
 
         # ── Feature rules (collapsible) ──
@@ -232,6 +233,13 @@ class ConfigUI:
             self.obs_list.disabled = True
         else:
             self.obs_list.disabled = False
+
+    def _on_resume_change(self, change):
+        disabled = change["new"]
+        for w in [self.models, self.features, self.obs_list, self.obs_all,
+                  self.n_uttr, self.bwd, self.fwd, self.test_mode,
+                  self.test_n_rows, self.use_video]:
+            w.disabled = disabled
 
     def _on_video_change(self, change):
         if change["new"]:
