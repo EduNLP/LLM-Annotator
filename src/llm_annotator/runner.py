@@ -23,9 +23,11 @@ def run_pipeline(
     results_sheet_id: str = "",
     validation_path: str = "",
     gc=None,
+    gdrive=None,
     verbose: bool = True,
     user: str = "",
     force_lock: bool = False,
+    materials_folder_override: str = "",
 ):
     """Run the full annotation pipeline from config.
 
@@ -51,13 +53,15 @@ def run_pipeline(
             return pd.DataFrame()
 
     try:
-        return _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log)
+        return _run_inner(config, results_sheet_id, validation_path, gc, gdrive,
+                          verbose, _log, materials_folder_override)
     finally:
         if results_sheet_id and gc:
             release_lock(gc, results_sheet_id)
 
 
-def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
+def _run_inner(config, results_sheet_id, validation_path, gc, gdrive, verbose, _log,
+               materials_folder_override=""):
     if not config.tracker_sheet_id or not gc:
         raise ValueError("tracker_sheet_id and gc are required — Tracker is the source of truth.")
     obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
@@ -136,6 +140,28 @@ def _run_inner(config, results_sheet_id, validation_path, gc, verbose, _log):
 
     print("\n── Cost Estimate ──")
     cost_estimates = estimate_cost(config, transcript_df, feature_dict)
+
+    # ── 2b. Auto-OCR materials for Directions ──
+    if gdrive and config.tracker_sheet_id:
+        needs_materials = any(
+            config.get_feature_rules(f, feature_dict.get(f)).get("extra_context_type") == "activity_instructions"
+            for f in config.feature_list
+        )
+        has_materials = "activity_instructions" in config.extra_context and config.extra_context["activity_instructions"]
+        if needs_materials and not has_materials:
+            _log("\n── Auto-loading materials text ──")
+            from llm_annotator.materials_ocr import ocr_materials_folder
+            mat_texts = []
+            for oid in obs_ids:
+                text = ocr_materials_folder(
+                    gc, gdrive, config.tracker_sheet_id, int(oid),
+                    override_folder_id=materials_folder_override,
+                )
+                if text:
+                    mat_texts.append(text)
+            if mat_texts:
+                config.extra_context["activity_instructions"] = "\n\n".join(mat_texts)
+                _log(f"  Injected {len(config.extra_context['activity_instructions'])} chars of materials text")
 
     # ── 3. Annotate ──
     start_ts = datetime.utcnow().isoformat()

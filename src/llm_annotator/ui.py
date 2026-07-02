@@ -198,6 +198,12 @@ class ConfigUI:
             placeholder="activity_instructions: <paste text here>",
             style=STYLE, layout=widgets.Layout(width="600px", height="80px"),
         )
+        self.materials_folder_override = widgets.Text(
+            value="",
+            description="Materials folder ID",
+            placeholder="(auto from Tracker, or paste Drive folder ID to override)",
+            style=STYLE, layout=LAYOUT,
+        )
 
         # ── Resume ──
         self.resume_text = widgets.Textarea(
@@ -276,6 +282,8 @@ class ConfigUI:
                 self.subcode_of_text,
                 self.extra_context_type_text,
                 self.extra_context_text,
+                widgets.HTML("<p style='color:gray'>Materials PDF OCR (auto from Tracker for Directions, or override folder ID):</p>"),
+                self.materials_folder_override,
             ]),
         ])
         rules_accordion.set_title(0, "Feature rule overrides (optional)")
@@ -323,6 +331,9 @@ class ConfigUI:
 
     def get_validation_path(self) -> str:
         return self.validation_file.value or ""
+
+    def get_materials_folder_override(self) -> str:
+        return self.materials_folder_override.value.strip()
 
 
 def _parse_dict(text: str) -> dict:
