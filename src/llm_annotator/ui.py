@@ -109,11 +109,14 @@ class ConfigUI:
             placeholder="/content/drive/.../mol_videoset_annotated_updated_5626.csv",
             style=STYLE, layout=LAYOUT,
         )
+        self.validation_file.observe(self._on_validation_change, names="value")
 
-        # ── Obs IDs (auto-populated from validation CSV) ──
-        self.obs_list = widgets.SelectMultiple(
-            options=[], description="Observation IDs",
-            style=STYLE, layout=LAYOUT, rows=8,
+        # ── Obs IDs (auto-populated from validation CSV, editable) ──
+        self.obs_list = widgets.Textarea(
+            value="",
+            description="Observation IDs",
+            placeholder="One per line, e.g.:\n241\n195\n302",
+            style=STYLE, layout=widgets.Layout(width="600px", height="100px"),
         )
         self.obs_all = widgets.Checkbox(
             value=False, description="Run all observations",
@@ -225,14 +228,12 @@ class ConfigUI:
     def _on_validation_change(self, change):
         path = change["new"]
         if not path:
-            self.obs_list.options = []
             return
         if path not in self._obsid_cache:
             self._obsid_cache[path] = _load_obsids_from_csv(path)
         obsids = self._obsid_cache[path]
-        self.obs_list.options = obsids
         if obsids:
-            self.obs_list.value = [obsids[0]]
+            self.obs_list.value = "\n".join(obsids)
 
     def _on_obs_all_change(self, change):
         if change["new"]:
@@ -305,7 +306,8 @@ class ConfigUI:
         if self.obs_all.value:
             obs_list = "all"
         else:
-            obs_list = list(self.obs_list.value) if self.obs_list.value else "all"
+            parsed = [line.strip() for line in self.obs_list.value.strip().splitlines() if line.strip()]
+            obs_list = parsed if parsed else "all"
 
         return ExperimentConfig(
             model_list=list(self.models.value),
