@@ -128,21 +128,21 @@ class ConfigUI:
         )
         self.features = widgets.SelectMultiple(
             options=list(zip(feature_labels, feature_codes)),
-            value=["Directions", "Coordinate"] if "Directions" in feature_codes else feature_codes[:2],
+            value=[],
             description="Features", style=STYLE, layout=LAYOUT, rows=min(10, len(feature_codes)),
         )
 
         # ── Prompt ──
         self.n_uttr = widgets.IntSlider(
-            value=5, min=1, max=20, description="Utterances/request",
+            value=1, min=1, max=20, description="Utterances/request",
             style=STYLE, layout=NARROW,
         )
         self.bwd = widgets.IntSlider(
-            value=2, min=0, max=10, description="Backward context",
+            value=5, min=0, max=10, description="Backward context",
             style=STYLE, layout=NARROW,
         )
         self.fwd = widgets.IntSlider(
-            value=0, min=0, max=10, description="Forward context",
+            value=5, min=0, max=10, description="Forward context",
             style=STYLE, layout=NARROW,
         )
 
@@ -151,8 +151,8 @@ class ConfigUI:
         _cbl = widgets.Layout(width="500px")
         self.test_mode = widgets.Dropdown(
             options=[
-                ("1 segment (default test)", "1_segment"),
-                ("1 transcript (all segments)", "1_transcript"),
+                ("1 segment (1 transcript)", "1_segment"),
+                ("1 segment (all transcripts)", "1_transcript"),
                 ("N rows", "n_rows"),
                 ("Full run", "full"),
             ],
