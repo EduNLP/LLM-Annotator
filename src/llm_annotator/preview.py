@@ -28,19 +28,20 @@ def preview_pipeline(
     gc=None,
     validation_path: str = "",
     tracker_tab: str = "Tracker",
+    tracker_sheet_id: str = "",
 ):
     """Print a complete dry-run preview of what the pipeline will do."""
-    tracker_sheet_id = config.tracker_sheet_id or ""
+    tracker_sheet_id = tracker_sheet_id or config.tracker_sheet_id or ""
 
     print("\n" + "=" * 70)
     print("  DRY-RUN PREVIEW — no API calls, no credits spent")
     print("=" * 70)
 
-    # ── 1. Load transcript and count rows ──
+    # ── 1. Load transcript (format from Tracker) ──
     print("\n── 1. Data Summary ──\n")
-    transcript_df = _load_transcript(config)
+    transcript_df = _load_transcript(config, gc, tracker_sheet_id)
     if transcript_df is None:
-        print("  ⚠️  Could not load transcript — check transcript_source path")
+        print("  ⚠️  Could not load transcript — check tracker_sheet_id and obs_list")
         return
 
     obs_ids = transcript_df["obsid"].astype(str).unique().tolist() if "obsid" in transcript_df.columns else []
@@ -183,31 +184,18 @@ def preview_pipeline(
     print(f"{'=' * 70}\n")
 
 
-def _load_transcript(config) -> Optional[pd.DataFrame]:
+def _load_transcript(config, gc=None, tracker_sheet_id: str = "") -> Optional[pd.DataFrame]:
     try:
-        if os.path.exists(config.transcript_source):
-            df = pd.read_csv(config.transcript_source)
-        else:
-            return None
+        obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
+        if gc and tracker_sheet_id and obs_ids:
+            import tempfile
+            from llm_annotator.formatter import format_multiple
+            with tempfile.TemporaryDirectory() as tmpdir:
+                df = format_multiple(gc, obs_ids, tracker_sheet_id, save_dir=tmpdir)
+                if df is not None and not df.empty:
+                    return df
 
-        if "role" not in df.columns and "speaker" in df.columns:
-            s = df["speaker"].astype(str)
-            teacher_like = (
-                s.str.contains("teacher", case=False, na=False)
-                | s.str.contains(r"\.", regex=True, na=False)
-            )
-            teacher_like = teacher_like | df["speaker"].isna()
-            df = df.copy()
-            df["role"] = "Student"
-            df.loc[teacher_like, "role"] = "Teacher"
-
-        if isinstance(config.obs_list, str) and config.obs_list == "all":
-            pass
-        elif isinstance(config.obs_list, list):
-            df["obsid"] = df["obsid"].astype(str)
-            df = df[df["obsid"].isin(config.obs_list)]
-
-        return df
+        return None
     except Exception as e:
         print(f"  Error loading transcript: {e}")
         return None
@@ -216,7 +204,7 @@ def _load_transcript(config) -> Optional[pd.DataFrame]:
 def _load_feature_dict(config) -> dict:
     try:
         from llm_annotator.dataloader import DataLoader, generate_features
-        dl = DataLoader(sheet_source=config.sheet_source, transcript_source=config.transcript_source)
+        dl = DataLoader(sheet_source=config.sheet_source, transcript_source="")
         feature_dict = {}
         for feat in config.feature_list:
             _, fd = generate_features(dl, feature=feat)
