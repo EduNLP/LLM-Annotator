@@ -39,24 +39,36 @@ def preview_pipeline(
 
     # ── 1. Load transcript (format from Tracker) ──
     print("\n── 1. Data Summary ──\n")
-    transcript_df = _load_transcript(config, gc, tracker_sheet_id)
-    if transcript_df is None:
-        print("  ⚠️  Could not load transcript — check tracker_sheet_id and obs_list")
-        return
+    obs_ids = config.obs_list if isinstance(config.obs_list, list) else []
+    if not obs_ids:
+        print("  ⚠️  No observation IDs selected — select obs in the UI or set obs_list")
+        print("  (Skipping transcript preview, showing config summary only)\n")
+        transcript_df = None
+    elif not gc or not tracker_sheet_id:
+        print("  ⚠️  gc or tracker_sheet_id missing — cannot format transcripts")
+        transcript_df = None
+    else:
+        transcript_df = _load_transcript(config, gc, tracker_sheet_id)
+        if transcript_df is None:
+            print("  ⚠️  Formatter returned empty — check Tracker hyperlinks for these obs")
+            return
 
-    obs_ids = transcript_df["obsid"].astype(str).unique().tolist() if "obsid" in transcript_df.columns else []
-    n_student = len(transcript_df[transcript_df["role"] == "Student"]) if "role" in transcript_df.columns else len(transcript_df)
+    if transcript_df is not None:
+        obs_ids = transcript_df["obsid"].astype(str).unique().tolist() if "obsid" in transcript_df.columns else []
+        n_student = len(transcript_df[transcript_df["role"] == "Student"]) if "role" in transcript_df.columns else len(transcript_df)
+        print(f"  Transcript:       {len(transcript_df)} total rows, {n_student} student utterances")
+        print(f"  Observations:     {len(obs_ids)} obs → {', '.join(obs_ids[:10])}{'...' if len(obs_ids) > 10 else ''}")
+    else:
+        n_student = 0
 
-    print(f"  Transcript:       {len(transcript_df)} total rows, {n_student} student utterances")
-    print(f"  Observations:     {len(obs_ids)} obs → {', '.join(obs_ids[:10])}{'...' if len(obs_ids) > 10 else ''}")
     test_labels = {"full": "NO (all rows)", "1_segment": "YES (1 segment)", "1_transcript": "YES (1 transcript)", "n_rows": f"YES ({config.test_n_rows} rows)"}
     print(f"  Test mode:        {test_labels.get(config.test_mode, config.test_mode)}")
-    if config.test_mode == "n_rows":
+    if n_student and config.test_mode == "n_rows":
         n_student = min(n_student, config.test_n_rows)
-    elif config.test_mode != "full":
-        n_student = min(n_student, 50)  # rough estimate for 1 segment/transcript
+    elif n_student and config.test_mode != "full":
+        n_student = min(n_student, 50)
 
-    n_requests = math.ceil(n_student / config.n_uttr)
+    n_requests = math.ceil(n_student / config.n_uttr) if n_student else 0
     print(f"  Requests:         ~{n_requests} ({config.n_uttr} utterances each, bwd={config.bwd_context_count} fwd={config.fwd_context_count})")
 
     # ── 2. Features and rules ──
@@ -69,12 +81,13 @@ def preview_pipeline(
         if rules["filter_if"]:
             print(f"    filter_if:          {rules['filter_if']}")
             # Check if filter columns exist in transcript
-            for col in rules["filter_if"]:
-                if col in transcript_df.columns:
-                    n_filtered = (transcript_df[col] == 1).sum()
-                    print(f"      → '{col}' column found: {n_filtered} rows would be filtered out")
-                else:
-                    print(f"      → '{col}' column NOT in transcript (filter will be skipped)")
+            if transcript_df is not None:
+                for col in rules["filter_if"]:
+                    if col in transcript_df.columns:
+                        n_filtered = (transcript_df[col] == 1).sum()
+                        print(f"      → '{col}' column found: {n_filtered} rows would be filtered out")
+                    else:
+                        print(f"      → '{col}' column NOT in transcript (filter will be skipped)")
         if rules["linked_with"]:
             print(f"    linked_with:        {rules['linked_with']}")
         if rules["subcode_of"]:
@@ -100,7 +113,7 @@ def preview_pipeline(
         print(f"  • {model}{video_note}")
 
     # ── 4. Video verification ──
-    if config.use_video and tracker_sheet_id and gc:
+    if config.use_video and tracker_sheet_id and gc and transcript_df is not None:
         print(f"\n── 4. Video Segment Verification ──\n")
         _verify_video_segments(config, gc, transcript_df, obs_ids, tracker_sheet_id, tracker_tab)
     elif config.use_video:
@@ -110,14 +123,17 @@ def preview_pipeline(
 
     # ── 5. Cost estimate ──
     print(f"\n── 5. Cost Estimate ──")
-    estimate_cost(config, transcript_df, feature_dict)
+    if transcript_df is not None:
+        estimate_cost(config, transcript_df, feature_dict)
+    else:
+        print("  (skipped — no transcript loaded)")
 
     # ── 6. Validation set check ──
     if validation_path and os.path.exists(validation_path):
         print(f"\n── 6. Validation Set ──\n")
         val_df = pd.read_csv(validation_path)
         val_obsids = val_df["obsid"].astype(str).unique().tolist() if "obsid" in val_df.columns else []
-        overlap = set(obs_ids) & set(val_obsids)
+        overlap = set(obs_ids if transcript_df is not None else []) & set(val_obsids)
         print(f"  Validation CSV:   {os.path.basename(validation_path)} ({len(val_df)} rows, {len(val_obsids)} obs)")
         print(f"  Overlap with run: {len(overlap)} obs → {', '.join(sorted(overlap)[:10])}")
         val_features = [c for c in val_df.columns if c.lower() in [f.lower() for f in config.feature_list]]
@@ -128,14 +144,15 @@ def preview_pipeline(
     # ── 7. Formatter + alignment ──
     if tracker_sheet_id:
         print(f"\n── 7. Formatter (always runs from Tracker) ──\n")
-        print(f"  Will format deidentified transcripts for obs: {', '.join(obs_ids[:10])}")
+        obs_display = obs_ids[:10] if transcript_df is not None else (config.obs_list[:10] if isinstance(config.obs_list, list) else ["(all)"])
+        print(f"  Will format deidentified transcripts for obs: {', '.join(str(o) for o in obs_display)}")
         if validation_path and os.path.exists(validation_path):
             print(f"  Will verify alignment against: {os.path.basename(validation_path)}")
 
     # ── 8. Step plan ──
     print(f"\n── 8. Pipeline Steps ──\n")
     steps = [
-        ("Format transcript", f"Tracker → deidentified → formatted CSV for {len(obs_ids)} obs"),
+        ("Format transcript", f"Tracker → deidentified → formatted CSV for {len(obs_ids) if transcript_df is not None else '?'} obs"),
     ]
 
     if validation_path:
